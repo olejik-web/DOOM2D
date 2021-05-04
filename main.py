@@ -43,7 +43,7 @@ def check_collide(obj, group):
                 return True
         return False
     else:
-        if pygame.sprite.collide_mask(obj, elem):
+        if pygame.sprite.collide_mask(obj, group):
             return True        
         return False
     
@@ -782,7 +782,7 @@ class Player(pygame.sprite.Sprite):
             self.image.get_width() // 5, self.image.get_height() // 5))                
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
-        self.rect = self.rect.move(600, 200)
+        self.rect = self.rect.move(5600, 200)
         self.animation_of_stand_inx = 1
         self.animation_of_move_inx = 0
         self.animation_of_jump_inx = 0
@@ -1458,12 +1458,13 @@ def show_pause():
 class Room:
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
-        enemys[1].rect = enemys[1].rect.move(300, 100)
+        enemys[0].rect = enemys[0].rect.move(300, 100)
+        '''enemys[1].rect = enemys[1].rect.move(300, 100)
         enemys[2].rect = enemys[2].rect.move(200, 200)        
         enemys[3].rect = enemys[3].rect.move(400, 200)        
         enemys[4].rect = enemys[4].rect.move(500, 200)             
         enemys[5].rect = enemys[5].rect.move(600, 200)             
-        enemys[6].rect = enemys[6].rect.move(700, 200)             
+        enemys[6].rect = enemys[6].rect.move(700, 200)'''
         for elem in enemys:
             self.enemys.add(elem)
     
@@ -1482,11 +1483,24 @@ class Room2(Room):
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
         enemys[0].rect = enemys[0].rect.move(1650, 100)
-        enemys[1].rect = enemys[1].rect.move(1450, 200)        
+        '''enemys[1].rect = enemys[1].rect.move(1450, 200)        
         enemys[2].rect = enemys[2].rect.move(1400, 200)        
         enemys[3].rect = enemys[3].rect.move(1500, 200)             
         enemys[4].rect = enemys[4].rect.move(1600, 200)             
-        enemys[5].rect = enemys[5].rect.move(1700, 200) 
+        enemys[5].rect = enemys[5].rect.move(1700, 200)'''
+        for elem in enemys:
+            self.enemys.add(elem)    
+
+
+class Room3(Room):
+    def __init__(self, enemys):
+        self.enemys = pygame.sprite.Group()
+        enemys[0].rect = enemys[0].rect.move(5800, 100)
+        '''enemys[1].rect = enemys[1].rect.move(1450, 200)        
+        enemys[2].rect = enemys[2].rect.move(1400, 200)        
+        enemys[3].rect = enemys[3].rect.move(1500, 200)             
+        enemys[4].rect = enemys[4].rect.move(1600, 200)             
+        enemys[5].rect = enemys[5].rect.move(1700, 200)'''
         for elem in enemys:
             self.enemys.add(elem)    
 
@@ -1521,10 +1535,18 @@ if __name__ == '__main__':
         wall1.image.get_width() // 2, wall1.image.get_height() // 2))
     wall1.rect = wall1.image.get_rect()
     wall1.rect = wall1.rect.move(-20, 0)
+    wall3 = GameObject('locations/start_location/pol.png')
+    tmp_image = pygame.Surface((100, 200))
+    wall3.image = tmp_image
+    wall3.image.fill((255, 0, 0))
+    wall3.rect = wall3.image.get_rect()
+    wall3.rect = wall3.rect.move(6300, 400)
+    wall3.mask = pygame.mask.from_surface(wall3.image)
     WALL_SPRITES.add(wall1)
+    WALL_SPRITES.add(wall3)
     wall2 = GameObject('locations/start_location/pol.png')
     tmp_image = pygame.Surface((75, 2000))
-    tmp_image.set_alpha(0)
+    # tmp_image.set_alpha(0)
     wall2.image = tmp_image
     wall2.image.fill((255, 0, 0))
     wall2.rect = wall2.image.get_rect()
@@ -1575,6 +1597,7 @@ if __name__ == '__main__':
                                         (room_pol.image.get_width() // 2 + 80, 
                                         room_pol.image.get_height() // 2))  
     room_pol.rect = room_pol.image.get_rect()
+    room_pol.mask = pygame.mask.from_surface(room_pol.image)
     room_pol.rect = room_pol.rect.move(5254, 334)
     BLOCK_SPRITES.add(room_pol)
     room_ceiling = GameObject('locations/komnata/ceiling.png')
@@ -1722,14 +1745,12 @@ if __name__ == '__main__':
     armor = Armor()
     wearon_logo = WearonLogo()
     ammo = Ammo()
-    room_1_enemys = Room([GameOpponent(), GameOpponent(), GameOpponent(), 
-                          GameOpponent(), GameOpponent(), GameOpponent(), 
-                          GameOpponent()])
-    room_1_enemys.enemys = pygame.sprite.Group()
-    room_2_enemys = Room2([GameOpponent(), GameOpponent(), GameOpponent(),
-                           GameOpponent(), GameOpponent(), GameOpponent()])
-    # room_1_enemys.active()
+    room_1_enemys = Room([GameOpponent()])
+    room_2_enemys = Room2([GameOpponent()])
+    room_3_enemys = Room3([Imp()])
+    room_1_enemys.active()
     room_2_enemys.active()
+    room_3_enemys.active()
     ALL_SPRITES.add(interface_window)
     ALL_SPRITES.add(hp)
     ALL_SPRITES.add(armor)
@@ -1936,5 +1957,8 @@ if __name__ == '__main__':
         clock.tick(FPS)            
         global_shooting_time -= 1    
         pygame.display.flip()
+        for elem in room_3_enemys.enemys:
+            print(check_collide(elem, room_pol))
+        print('player_coords(x:{}, y:{})'.format(player.rect.x, player.rect.y))
     pygame.quit()
     pygame.mixer.quit()
