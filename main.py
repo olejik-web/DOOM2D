@@ -186,7 +186,16 @@ class Imp(GameOpponent):
                  for elem in os.listdir('images/imp/imp_crawling')
                  if os.path.isfile('images/imp/imp_crawling/' + elem)])
         self.animate_list_crawl = ['imp/imp_crawling/{}.png'.format(i) 
-                                  for i in range(len(self.animate_list_crawl))]                
+                                  for i in range(len(self.animate_list_crawl))]
+        self.animate_list_shot = sorted(['imp/imp_fireboll/' + elem
+                 for elem in os.listdir('images/imp/imp_fireboll')
+                 if os.path.isfile('images/imp/imp_fireboll/' + elem)])
+        self.animate_list_shot = ['imp/imp_fireboll/{}.png'.format(i) 
+                                  for i in range(len(self.animate_list_shot))]        
+        self.fireball_image = load_image('imp/fireboll.png')
+        self.fireball_image = pygame.transform.scale(self.fireball_image, (
+            self.fireball_image.get_width() // 6, 
+            self.fireball_image.get_height() // 6))
         self.image = pygame.transform.scale(self.image, (
             self.image.get_width() // 5, self.image.get_height() // 5))
         self.gravity = 10
@@ -200,8 +209,26 @@ class Imp(GameOpponent):
         self.reway = False
         self.kayo_time = 160 
         self.animate_crawl_inx = 0
+        self.animate_shot_inx = 0
         self.crawling = False
         self.flag = False
+        self.shotin = False
+    
+    def animate_shoting(self):
+        try:
+            self.image = load_image(self.animate_list_shot[
+                self.animate_shot_inx])
+            self.image = pygame.transform.scale(self.image, (
+                self.image.get_width() // 5, self.image.get_height() // 5))
+            self.animate_inx %= len(self.animate_list_shot)
+            if self.animate_inx < len(self.animate_list_shot) - 1:
+                self.animate_shot_inx += 1
+            else:
+                self.animate_shot_inx = 0
+            if not self.reway:
+                self.image = pygame.transform.flip(self.image, True, False)
+        except Exception:
+            self.animate_shot_inx = 0        
         
     def animate_crawling(self):
         try:
@@ -232,6 +259,7 @@ class Imp(GameOpponent):
                 self.rect = self.rect.move(0, self.gravity)
         r = player.rect.x - self.rect.x
         self.flag = False
+        self.shoting = False
         if self.hp > 0:
             if abs(r) < 800 and abs(r) > 60:
                 if abs(r) < 700 and abs(r) > 500:
@@ -253,14 +281,33 @@ class Imp(GameOpponent):
                                 self.rect = self.rect.move(9, 0)
                                 self.reway = False
                             break
+                        else:
+                            if self.animate_shot_inx == 17:
+                                self.fireball = FireBall(self.fireball_image)
+                                if self.reway:
+                                    self.fireball.bullet_v = -35
+                                    self.fireball.rect = self.fireball.rect.move(
+                                        self.rect.x, self.rect.y + 5)                                                    
+                                else:
+                                    self.fireball.bullet_v = 35
+                                    self.fireball.rect = self.fireball.rect.move(
+                                        self.rect.x + 60, self.rect.y + 5)                                               
+                            self.animate_shoting()
+                            self.shoting = True
                 if not self.flag:
-                    self.animate_moving()
-                    if r < 0:
-                        self.reway = True
-                        self.rect = self.rect.move(-9, 0)
-                    else:
-                        self.reway = False
-                        self.rect = self.rect.move(9, 0)  
+                    if pygame.sprite.spritecollideany(self, WALL_SPRITES):
+                        if self.reway:
+                            self.rect = self.rect.move(9, 0)
+                        else:
+                            self.rect = self.rect.move(-9, 0)
+                    if not self.shoting:
+                        self.animate_moving()
+                        if r < 0:
+                            self.reway = True
+                            self.rect = self.rect.move(-9, 0)
+                        else:
+                            self.reway = False
+                            self.rect = self.rect.move(9, 0)  
                     self.animate_fight_inx = 0
                     # self.crawling = False
             elif abs(r) > 0:
@@ -301,7 +348,8 @@ class Imp(GameOpponent):
                         self.make_kayo_animation = True
                 else:
                     if self.animate_dieng():
-                        self.kill()    
+                        self.kill()
+            
 
 
 class HiddenSprite(pygame.sprite.Sprite):
@@ -1231,13 +1279,42 @@ class Bullet(pygame.sprite.Sprite):
         if pygame.sprite.collide_mask(self, door1):
             self.kill()     
         if self.rect.colliderect(wall2.rect):
-            self.kill()     
+            self.kill()
+        if self.rect.colliderect(wall3.rect):
+            self.kill() 
         if pygame.sprite.collide_mask(self, door2):
             self.kill()     
         if pygame.sprite.collide_mask(self, stolb):
             self.image.set_alpha(0)
         else:
-            self.image.set_alpha(255)
+            self.image.set_alpha(255)     
+
+
+class FireBall(Bullet):
+    def update(self, *args):
+        self.rect = self.rect.move(self.bullet_v, 3)
+        if self.rect.colliderect(wall1.rect):
+            self.kill()     
+        if pygame.sprite.collide_mask(self, door1):
+            self.kill()     
+        if self.rect.colliderect(wall2.rect):
+            self.kill()
+        if self.rect.colliderect(wall3.rect):
+            self.kill() 
+        if pygame.sprite.collide_mask(self, door2):
+            self.kill() 
+        if pygame.sprite.collide_mask(self, player):
+            self.kill()
+            if player.armor > 0:
+                player.armor -= 2
+                armor.update(player.armor)
+            elif player.hp > 0:
+                player.hp -= 2
+                hp.update(player.hp)
+        if pygame.sprite.collide_mask(self, stolb):
+            self.image.set_alpha(0)
+        else:
+            self.image.set_alpha(255)     
 
 
 class Camera:
@@ -1890,15 +1967,15 @@ if __name__ == '__main__':
         # print(way)
         # ALL_SPRITES.update()
         # print(player_hand in ALL_SPRITES)
+        player_dead.update_place_of_dead()        
+        ALL_SPRITES.draw(SCREEN)
         if player.hp <= 0 and player.armor <= 0:
             player.must_make_hide_of_dead = True
             player_hand.must_make_hide_of_dead = True
             if player_dead.update():
                 game_over()
             else:
-                SCREEN.blit(player_dead.image, player_dead.rect)
-        player_dead.update_place_of_dead()        
-        ALL_SPRITES.draw(SCREEN)      
+                SCREEN.blit(player_dead.image, player_dead.rect)        
         if (player_hand.shooting_time > 0):
             if (player.with_pistol and 
                 player_hand.animation_downing_hand_do 
@@ -1910,6 +1987,9 @@ if __name__ == '__main__':
                     elem.update()
         else:
             pistol_shooting = False
+        for elem in ALL_SPRITES:
+            if type(elem) == FireBall:
+                elem.update()
         # print(pistol_patron_x)
         tmp = len(player_hand.animate_list_push)
         if player_hand.animate_list_push_inx == tmp:
@@ -1958,7 +2038,8 @@ if __name__ == '__main__':
         global_shooting_time -= 1    
         pygame.display.flip()
         for elem in room_3_enemys.enemys:
-            print(check_collide(elem, room_pol))
+            # print(elem.rect.colliderect(wall3.rect))
+            pass
         print('player_coords(x:{}, y:{})'.format(player.rect.x, player.rect.y))
     pygame.quit()
     pygame.mixer.quit()
