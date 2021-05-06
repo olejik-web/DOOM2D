@@ -177,10 +177,10 @@ class Imp(GameOpponent):
                  if os.path.isfile('images/imp/imp_kayo/' + elem)])
         self.animate_list_kayo = ['imp/imp_kayo/{}.png'.format(i) 
                                   for i in range(len(self.animate_list_kayo))]
-        self.animate_list_fatal_dead = sorted(['demonical/demonical_fatal_dead/' + elem
-                 for elem in os.listdir('images/demonical/demonical_fatal_dead')
-                 if os.path.isfile('images/demonical/demonical_fatal_dead/' + elem)])
-        self.animate_list_fatal_dead = ['demonical/demonical_fatal_dead/{}.png'.format(i) 
+        self.animate_list_fatal_dead = sorted(['imp/imp_fatal_dead/' + elem
+                 for elem in os.listdir('images/imp/imp_fatal_dead')
+                 if os.path.isfile('images/imp/imp_fatal_dead/' + elem)])
+        self.animate_list_fatal_dead = ['imp/imp_fatal_dead/{}.png'.format(i) 
                                   for i in range(len(self.animate_list_fatal_dead))]        
         self.animate_list_crawl = sorted(['imp/imp_crawling/' + elem
                  for elem in os.listdir('images/imp/imp_crawling')
@@ -192,6 +192,20 @@ class Imp(GameOpponent):
                  if os.path.isfile('images/imp/imp_fireboll/' + elem)])
         self.animate_list_shot = ['imp/imp_fireboll/{}.png'.format(i) 
                                   for i in range(len(self.animate_list_shot))]        
+        self.animate_list_crawl_shot = sorted(['imp/imp_fire_wall/' + elem
+                 for elem in os.listdir('images/imp/imp_fire_wall')
+                 if os.path.isfile('images/imp/imp_fire_wall/' + elem)])
+        self.animate_list_crawl_shot = ['imp/imp_fire_wall/{}.png'.format(i) 
+                                  for i in range(len(
+                                      self.animate_list_crawl_shot))]
+        
+        self.animate_list_crawl_jump = sorted(['imp/imp_fire_wall/' + elem
+                 for elem in os.listdir('images/imp/imp_fire_wall')
+                 if os.path.isfile('images/imp/imp_fire_wall/' + elem)])
+        self.animate_list_crawl_shot = ['imp/imp_fire_wall/{}.png'.format(i) 
+                                  for i in range(len(
+                                      self.animate_list_crawl_shot))]        
+        
         self.fireball_image = load_image('imp/fireboll.png')
         self.fireball_image = pygame.transform.scale(self.fireball_image, (
             self.fireball_image.get_width() // 6, 
@@ -210,6 +224,7 @@ class Imp(GameOpponent):
         self.kayo_time = 160 
         self.animate_crawl_inx = 0
         self.animate_shot_inx = 0
+        self.animate_crawl_shot_inx = 0
         self.crawling = False
         self.flag = False
         self.shotin = False
@@ -246,6 +261,22 @@ class Imp(GameOpponent):
         except Exception:
             self.animate_crawl_inx = 0
     
+    def animate_crawl_shoting(self):
+        try:
+            self.image = load_image(self.animate_list_crawl_shot[
+                self.animate_crawl_shot_inx])
+            self.image = pygame.transform.scale(self.image, (
+                self.image.get_width() // 5, self.image.get_height() // 5))
+            self.animate_inx %= len(self.animate_list_crawl_shot)
+            if self.animate_inx < len(self.animate_list_crawl_shot) - 1:
+                self.animate_crawl_shot_inx += 1
+            else:
+                self.animate_crawl_shot_inx = 0
+            if not self.reway:
+                self.image = pygame.transform.flip(self.image, True, False)
+        except Exception:
+            self.animate_crawl_shot_inx = 0
+    
     def update(self, *args):
         for elem in ALL_SPRITES:
             if pygame.sprite.collide_mask(self, elem) and type(elem) == Bullet:
@@ -260,14 +291,36 @@ class Imp(GameOpponent):
         r = player.rect.x - self.rect.x
         self.flag = False
         self.shoting = False
+        self.crawling = False
+        for elem in WALL_SPRITES:
+            if self.rect.colliderect(elem.rect):        
+                self.crawling = True
         if self.hp > 0:
             if abs(r) < 800 and abs(r) > 60:
                 if abs(r) < 700 and abs(r) > 500:
                     for elem in WALL_SPRITES:
                         if self.rect.colliderect(elem.rect):
-                            self.animate_crawling()
                             if self.rect.y > 200:
+                                self.animate_crawling()
+                                # self.crawling = True
                                 self.rect = self.rect.move(0, -3)
+                            else:
+                                self.animate_crawl_shoting()
+                                if self.animate_crawl_shot_inx == 22:
+                                    self.fireball = FireBall(
+                                        self.fireball_image)
+                                    if not self.reway:
+                                        r2 = abs(self.rect.y - player.rect.y)
+                                        self.fireball.bullet_v = -abs(r) // 10
+                                        self.fireball.bullet_y = r2 // 10
+                                        self.fireball.rect = self.fireball.rect.move(
+                                            self.rect.x, self.rect.y + 10)                                                    
+                                    else:
+                                        r2 = self.rect.y - player.rect.y
+                                        self.fireball.bullet_v = abs(r) // 10
+                                        self.fireball.bullet_y = -r2 // 10
+                                        self.fireball.rect = self.fireball.rect.move(
+                                            self.rect.x + 60, self.rect.y + 10)                                                                               
                                 # print(self.rect.y)
                             self.flag = True
                             break
@@ -281,7 +334,8 @@ class Imp(GameOpponent):
                                 self.rect = self.rect.move(9, 0)
                                 self.reway = False
                             break
-                        else:
+                        elif not self.crawling:
+                            print(self.crawling)
                             if self.animate_shot_inx == 17:
                                 self.fireball = FireBall(self.fireball_image)
                                 if self.reway:
@@ -830,7 +884,7 @@ class Player(pygame.sprite.Sprite):
             self.image.get_width() // 5, self.image.get_height() // 5))                
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
-        self.rect = self.rect.move(5600, 200)
+        self.rect = self.rect.move(2300, 200)
         self.animation_of_stand_inx = 1
         self.animation_of_move_inx = 0
         self.animation_of_jump_inx = 0
@@ -848,12 +902,13 @@ class Player(pygame.sprite.Sprite):
                 self.image.set_alpha(0)
                 print('ok')
                 return
-            if pygame.sprite.spritecollideany(self, WALL_SPRITES):
-                if self.reway:
-                    self.rect = self.rect.move(20, 0)
-                else:
-                    self.rect = self.rect.move(-20, 0)
-                return 
+            for elem in WALL_SPRITES:
+                if self.rect.colliderect(elem.rect):
+                    if self.rect.x > elem.rect.x:
+                        self.rect = self.rect.move(20, 0)
+                    else:
+                        self.rect = self.rect.move(-20, 0)
+                    return 
             if (not self.with_pistol and self.pushing_time <= 0):
                 if args[0] == 'left':
                     self.rect = self.rect.move(-14, 0)
@@ -1271,6 +1326,7 @@ class Bullet(pygame.sprite.Sprite):
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
         self.bullet_v = 0
+        self.bullet_y = 3
     
     def update(self, *args):
         self.rect = self.rect.move(self.bullet_v, 0)
@@ -1292,7 +1348,7 @@ class Bullet(pygame.sprite.Sprite):
 
 class FireBall(Bullet):
     def update(self, *args):
-        self.rect = self.rect.move(self.bullet_v, 3)
+        self.rect = self.rect.move(self.bullet_v, self.bullet_y)
         if self.rect.colliderect(wall1.rect):
             self.kill()     
         if pygame.sprite.collide_mask(self, door1):
@@ -1560,9 +1616,9 @@ class Room2(Room):
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
         enemys[0].rect = enemys[0].rect.move(1650, 100)
-        '''enemys[1].rect = enemys[1].rect.move(1450, 200)        
-        enemys[2].rect = enemys[2].rect.move(1400, 200)        
-        enemys[3].rect = enemys[3].rect.move(1500, 200)             
+        enemys[1].rect = enemys[1].rect.move(2050, 200)        
+        enemys[2].rect = enemys[2].rect.move(2450, 200)        
+        '''enemys[3].rect = enemys[3].rect.move(1500, 200)             
         enemys[4].rect = enemys[4].rect.move(1600, 200)             
         enemys[5].rect = enemys[5].rect.move(1700, 200)'''
         for elem in enemys:
@@ -1572,7 +1628,7 @@ class Room2(Room):
 class Room3(Room):
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
-        enemys[0].rect = enemys[0].rect.move(5800, 100)
+        enemys[0].rect = enemys[0].rect.move(7900, 100)
         '''enemys[1].rect = enemys[1].rect.move(1450, 200)        
         enemys[2].rect = enemys[2].rect.move(1400, 200)        
         enemys[3].rect = enemys[3].rect.move(1500, 200)             
@@ -1613,11 +1669,11 @@ if __name__ == '__main__':
     wall1.rect = wall1.image.get_rect()
     wall1.rect = wall1.rect.move(-20, 0)
     wall3 = GameObject('locations/start_location/pol.png')
-    tmp_image = pygame.Surface((100, 200))
+    tmp_image = pygame.Surface((100, 300))
     wall3.image = tmp_image
     wall3.image.fill((255, 0, 0))
     wall3.rect = wall3.image.get_rect()
-    wall3.rect = wall3.rect.move(6300, 400)
+    wall3.rect = wall3.rect.move(6300, 360)
     wall3.mask = pygame.mask.from_surface(wall3.image)
     WALL_SPRITES.add(wall1)
     WALL_SPRITES.add(wall3)
@@ -1823,7 +1879,7 @@ if __name__ == '__main__':
     wearon_logo = WearonLogo()
     ammo = Ammo()
     room_1_enemys = Room([GameOpponent()])
-    room_2_enemys = Room2([GameOpponent()])
+    room_2_enemys = Room2([GameOpponent(), Imp(), Imp()])
     room_3_enemys = Room3([Imp()])
     room_1_enemys.active()
     room_2_enemys.active()
@@ -1854,8 +1910,11 @@ if __name__ == '__main__':
     while running:
         # print(demonical.print_info())
         pauseform.pressing_Esc = False
-        while pygame.sprite.spritecollideany(player, ladders):
-            player.rect = player.rect.move(0, -20)
+        for elem in ALL_SPRITES:
+            if pygame.sprite.spritecollideany(elem, ladders):
+                if (type(elem) == Imp or type(elem) == Player 
+                    or type(elem) == GameOpponent):
+                    elem.rect = elem.rect.move(0, -20)
         # root.bind('up', print('up', end=' '))
         # root.bind('left', print('left'))
         # print(keyboard.is_pressed('space'), keyboard.is_pressed('a'),
