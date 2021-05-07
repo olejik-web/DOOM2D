@@ -818,8 +818,8 @@ class Player(pygame.sprite.Sprite):
         super().__init__(ALL_SPRITES)
         self.vector_x = 0
         self.vector_y = 0
-        self.armor = 0
-        self.hp = 0
+        self.armor = 10
+        self.hp = 10
         self.with_pistol = False
         self.pushing_time = 0
         self.image_hand = 0
