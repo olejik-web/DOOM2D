@@ -8,6 +8,64 @@ import getkey
 
 
 WIDTH, HEIGHT = 1200, 600
+pygame.mixer.init()
+SOUNDS = {
+    'metal_jump': pygame.mixer.Sound(
+        'music/doomguy/jump_on_a_matal/jump.wav'),
+    'metal_landfall': [pygame.mixer.Sound(
+        'music/doomguy/jump_on_a_matal/landfall_1.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/jump_on_a_matal/landfall_2.wav')
+        ],
+    'punch': {
+        'hit': pygame.mixer.Sound(
+            'music/doomguy/punch/hit.wav'),
+        'miss': pygame.mixer.Sound(
+            'music/doomguy/punch/miss.wav'),
+    },
+    'walking_on_metal': [
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/1.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/2.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/3.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/4.wav'),
+    ],
+    'pistol_shot': [
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/1.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/2.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/3.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/4.wav'),        
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/5.wav'),        
+    ],
+    'change_wearon': pygame.mixer.Sound(
+            'music/doomguy/change_wearon.wav'),  
+    'doors': [
+        pygame.mixer.Sound('music/doors/1st-door.wav'),
+        pygame.mixer.Sound('music/doors/2nd-door.wav'),
+    ],
+    'imp': {
+        'deaths': [pygame.mixer.Sound('music/imp/death1.wav'),
+                   pygame.mixer.Sound('music/imp/death2.wav'),],
+        'punches': [pygame.mixer.Sound('music/imp/punch_1.wav'),
+                   pygame.mixer.Sound('music/imp/punch_2.wav'),],
+        'walking': pygame.mixer.Sound('music/imp/walking.wav'),
+        'fireball': {
+            'create': pygame.mixer.Sound('music/imp/fireball_create.wav'),
+            'flight': pygame.mixer.Sound('music/imp/fireball_flight.wav'),
+        }
+    },
+    'gameplay': [pygame.mixer.Sound('music/gameplay2.wav'),
+                   pygame.mixer.Sound('music/gameplay1.wav'),],
+    'death_screen': pygame.mixer.Sound('music/death_screen.wav')
+}
 
 
 def load_image(name, colorkey=None):
@@ -260,6 +318,8 @@ class WearonLogo(pygame.sprite.Sprite):
         self.simple_image.set_alpha(0)
         self.image = self.simple_image
         self.wearons = {'pistol': False, 'shoutgun': False}
+        self.sound = SOUNDS['change_wearon']
+        self.sound.set_volume(0.6)
         
     def receive_wearon(self, event):
         if event.type == pygame.KEYUP:
@@ -267,10 +327,12 @@ class WearonLogo(pygame.sprite.Sprite):
                 self.wearons['pistol'] = not self.wearons['pistol']
                 if self.wearons['pistol']:
                     self.wearons['shoutgun'] = False
+                self.sound.play()
             if event.key == pygame.K_2:
                 self.wearons['shoutgun'] = not self.wearons['shoutgun']
                 if self.wearons['shoutgun']:
-                    self.wearons['pistol'] = False                
+                    self.wearons['pistol'] = False             
+                self.sound.play()
         if self.wearons['pistol']:
             self.image = self.pistol_image
         elif self.wearons['shoutgun']:
@@ -288,3 +350,4 @@ class Ammo(pygame.sprite.Sprite):
                                              self.image.get_height() // 5))
         self.rect = self.image.get_rect()
         self.rect = self.rect.move(0, 495)
+pygame.mixer.quit()

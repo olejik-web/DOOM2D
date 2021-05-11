@@ -2,7 +2,7 @@ import os, sys
 import pygame
 import keyboard
 from pprint import pprint
-from random import randrange
+from random import randrange, choice
 from tkinter import *
 import getkey 
 from interface_elems import Button, DialogWindow, YesButton, NoButton
@@ -10,6 +10,7 @@ from interface_elems import ContinueButton, InterfaceWindow, Hp, Armor
 from interface_elems import WearonLogo, Ammo, StartInControlPointButton
 from interface_elems import ExitOnWorkTableButton, GameOverExitButton
 from opponents import Opponent
+import arcade
 
 # class Player:
 #    def __init__(self):
@@ -20,7 +21,6 @@ class PauseForm():
         self.pressing_Esc = False
      
 WIDTH, HEIGHT = 1200, 600
-SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
 FPS = 24
 PRESSING_SPACE = False
 PRESSING_K_1 = False
@@ -33,9 +33,65 @@ PLAYER_GROUP = pygame.sprite.Group()
 FIRST_LEVEL_GROUP = pygame.sprite.Group()
 INTERFACE_GROUP = pygame.sprite.Group()
 OPPONENTS = pygame.sprite.Group()
-SOUNDS = {}
-
 pygame.mixer.init()
+SOUNDS = {
+    'metal_jump': pygame.mixer.Sound(
+        'music/doomguy/jump_on_a_matal/jump.wav'),
+    'metal_landfall': [pygame.mixer.Sound(
+        'music/doomguy/jump_on_a_matal/landfall_1.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/jump_on_a_matal/landfall_2.wav')
+        ],
+    'punch': {
+        'hit': pygame.mixer.Sound(
+            'music/doomguy/punch/hit.wav'),
+        'miss': pygame.mixer.Sound(
+            'music/doomguy/punch/miss.wav'),
+    },
+    'walking_on_metal': [
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/1.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/2.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/3.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/walking_on_a_matal/4.wav'),
+    ],
+    'pistol_shot': [
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/1.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/2.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/3.wav'),
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/4.wav'),        
+        pygame.mixer.Sound(
+            'music/doomguy/pistol_shot/5.wav'),        
+    ],
+    'change_wearon': pygame.mixer.Sound(
+            'music/doomguy/change_wearon.wav'),  
+    'doors': [
+        pygame.mixer.Sound('music/doors/1st-door.wav'),
+        pygame.mixer.Sound('music/doors/2nd-door.wav'),
+    ],
+    'imp': {
+        'deaths': [pygame.mixer.Sound('music/imp/death1.wav'),
+                   pygame.mixer.Sound('music/imp/death2.wav'),],
+        'punches': [pygame.mixer.Sound('music/imp/punch_1.wav'),
+                   pygame.mixer.Sound('music/imp/punch_2.wav'),],
+        'walking': pygame.mixer.Sound('music/imp/walking.wav'),
+        'fireball': {
+            'create': pygame.mixer.Sound('music/imp/fireball_create.wav'),
+            'flight': pygame.mixer.Sound('music/imp/fireball_flight.wav'),
+        }
+    },
+    'gameplay': [pygame.mixer.Sound('music/gameplay2.wav'),
+                   pygame.mixer.Sound('music/gameplay1.wav'),],
+    'death_screen': pygame.mixer.Sound('music/death_screen.wav')
+}
+
 
 def check_collide(obj, group):
     if type(group) == pygame.sprite.Group:
@@ -199,14 +255,18 @@ class Imp(GameOpponent):
         self.animate_list_crawl_shot = ['imp/imp_fire_wall/{}.png'.format(i) 
                                   for i in range(len(
                                       self.animate_list_crawl_shot))]
-        
-        self.animate_list_crawl_jump = sorted(['imp/imp_fire_wall/' + elem
+        self.animate_list_crawl_shot = sorted(['imp/imp_fire_wall/' + elem
                  for elem in os.listdir('images/imp/imp_fire_wall')
                  if os.path.isfile('images/imp/imp_fire_wall/' + elem)])
         self.animate_list_crawl_shot = ['imp/imp_fire_wall/{}.png'.format(i) 
                                   for i in range(len(
-                                      self.animate_list_crawl_shot))]        
-        
+                                      self.animate_list_crawl_shot))] 
+        self.animate_list_jump = sorted(['imp/imp_jump/' + elem
+                 for elem in os.listdir('images/imp/imp_jump')
+                 if os.path.isfile('images/imp/imp_jump/' + elem)])
+        self.animate_list_jump = ['imp/imp_jump/{}.png'.format(i + 1) 
+                                  for i in range(len(
+                                      self.animate_list_jump))]
         self.fireball_image = load_image('imp/fireboll.png')
         self.fireball_image = pygame.transform.scale(self.fireball_image, (
             self.fireball_image.get_width() // 6, 
@@ -221,6 +281,7 @@ class Imp(GameOpponent):
         self.animate_fight_inx = 0
         self.animate_kayo_inx = 0
         self.animate_dead_inx = 0
+        self.animate_jump_inx = 0
         self.reway = False
         self.kayo_time = 160 
         self.animate_crawl_inx = 0
@@ -228,7 +289,24 @@ class Imp(GameOpponent):
         self.animate_crawl_shot_inx = 0
         self.crawling = False
         self.flag = False
-        self.shotin = False
+        self.shoting = False
+        self.jumping = False
+        self.up_v = 0
+        self.sound = ''
+        self.step_const = randrange(9, 13)
+        self.step_time = self.step_const        
+    
+    def animate_jumping(self):
+        try:
+            self.image = load_image(self.animate_list_jump[
+                self.animate_jump_inx])
+            self.image = pygame.transform.scale(self.image, (
+                self.image.get_width() // 5, self.image.get_height() // 5))
+            self.animate_jump_inx += 1
+            if not self.reway:
+                self.image = pygame.transform.flip(self.image, True, False)
+        except Exception:
+            self.animate_jump_inx = 0            
     
     def animate_shoting(self):
         try:
@@ -279,6 +357,9 @@ class Imp(GameOpponent):
             self.animate_crawl_shot_inx = 0
     
     def update(self, *args):
+        self.rect = self.rect.move(0, self.up_v)                        
+        if self.up_v < 0:
+            self.up_v += self.gravity
         for elem in ALL_SPRITES:
             if pygame.sprite.collide_mask(self, elem) and type(elem) == Bullet:
                 self.hp -= 2
@@ -289,6 +370,8 @@ class Imp(GameOpponent):
         if not check_collide(self, BLOCK_SPRITES):
             if not self.flag:
                 self.rect = self.rect.move(0, self.gravity)
+        else:
+            self.jumping = False
         r = player.rect.x - self.rect.x
         self.flag = False
         self.shoting = False
@@ -297,23 +380,49 @@ class Imp(GameOpponent):
             if self.rect.colliderect(elem.rect):        
                 self.crawling = True
         if self.hp > 0:
+            if self.animate_fight_inx == 18:
+                self.sound = choice(SOUNDS['imp']['punches'])
+                self.sound.set_volume(0.6)
+                self.sound.play()
+            if (self.animate_inx != 0 
+                and self.animate_inx % self.step_const == 0):
+                self.step_const = randrange(9, 13)
+                self.sound = SOUNDS['imp']['walking']
+                self.sound.set_volume(0.6)
+                self.sound.play()                       
+            for elem in ALL_SPRITES:
+                if type(elem) == Bullet:
+                    if (abs(elem.rect.x - self.rect.x) < 600 and abs(elem.rect.x - self.rect.x) > 100
+                        and check_collide(self, BLOCK_SPRITES)):
+                        if (self.reway and 
+                            elem.bullet_v // abs(elem.bullet_v) > 0 
+                            or not self.reway 
+                            and elem.bullet_v // abs(elem.bullet_v) < 0):
+                            # print('inx =', self.animate_jump_inx)
+                            # not self.reway and elem.rect.x > self.rect.x
+                            self.jumping = True
+                            self.up_v = -60                
             if abs(r) < 800 and abs(r) > 60:
                 if abs(r) < 700 and abs(r) > 500:
                     for elem in WALL_SPRITES:
-                        if self.rect.colliderect(elem.rect):
+                        if self.rect.colliderect(elem.rect) and not self.jumping:
                             if self.rect.y > 200:
                                 self.animate_crawling()
                                 # self.crawling = True
                                 self.rect = self.rect.move(0, -3)
                             else:
                                 self.animate_crawl_shoting()
+                                if self.animate_crawl_shot_inx == 1:
+                                    self.sound = SOUNDS['imp']['fireball']['create']
+                                    self.sound.set_volume(0.05)
+                                    self.sound.play()                                                             
                                 if self.animate_crawl_shot_inx == 22:
                                     self.fireball = FireBall(
                                         self.fireball_image)
                                     if not self.reway:
-                                        r2 = abs(self.rect.y - player.rect.y)
+                                        r2 = self.rect.y - player.rect.y
                                         self.fireball.bullet_v = -abs(r) // 10
-                                        self.fireball.bullet_y = r2 // 10
+                                        self.fireball.bullet_y = -r2 // 10
                                         self.fireball.rect = self.fireball.rect.move(
                                             self.rect.x, self.rect.y + 10)                                                    
                                     else:
@@ -326,8 +435,18 @@ class Imp(GameOpponent):
                             self.flag = True
                             break
                         elif abs(elem.rect.x - self.rect.x) < 500:
-                            self.flag = True
-                            self.animate_moving()
+                            self.flag = False
+                            if not self.jumping:
+                                self.animate_moving()
+                            else:
+                                self.animate_jumping()
+                            if pygame.sprite.spritecollideany(self, 
+                                                              WALL_SPRITES):
+                                if self.rect.colliderect(elem.rect):
+                                    if self.reway:
+                                        self.rect = self.rect.move(9, 0)
+                                    else:
+                                        self.rect = self.rect.move(-9, 0)                            
                             if elem.rect.x - self.rect.x < 0:
                                 self.rect = self.rect.move(-9, 0)
                                 self.reway = True
@@ -337,7 +456,11 @@ class Imp(GameOpponent):
                             break
                         elif not self.crawling:
                             print(self.crawling)
-                            if self.animate_shot_inx == 17:
+                            if self.animate_shot_inx == 1:
+                                self.sound = SOUNDS['imp']['fireball']['create']
+                                self.sound.set_volume(0.05)
+                                self.sound.play()                                    
+                            if self.animate_shot_inx == 17:                         
                                 self.fireball = FireBall(self.fireball_image)
                                 if self.reway:
                                     self.fireball.bullet_v = -35
@@ -350,13 +473,17 @@ class Imp(GameOpponent):
                             self.animate_shoting()
                             self.shoting = True
                 if not self.flag:
-                    if pygame.sprite.spritecollideany(self, WALL_SPRITES):
-                        if self.reway:
-                            self.rect = self.rect.move(9, 0)
-                        else:
-                            self.rect = self.rect.move(-9, 0)
                     if not self.shoting:
-                        self.animate_moving()
+                        if pygame.sprite.spritecollideany(self, WALL_SPRITES):
+                            if self.rect.colliderect(elem.rect):
+                                if self.reway:
+                                    self.rect = self.rect.move(9, 0)
+                                else:
+                                    self.rect = self.rect.move(-9, 0)                        
+                        if not self.jumping:
+                            self.animate_moving()
+                        else:
+                            self.animate_jumping()                        
                         if r < 0:
                             self.reway = True
                             self.rect = self.rect.move(-9, 0)
@@ -365,7 +492,7 @@ class Imp(GameOpponent):
                             self.rect = self.rect.move(9, 0)  
                     self.animate_fight_inx = 0
                     # self.crawling = False
-            elif abs(r) > 0:
+            elif abs(r) > 0 and not self.jumping:
                 self.animate_beating()                  
                 if (self.animate_fight_inx == 20 
                     and pygame.sprite.collide_mask(self, player)):
@@ -375,7 +502,7 @@ class Imp(GameOpponent):
                     elif player.hp > 0:
                         player.hp -= 4
                         hp.update(player.hp)
-            else:
+            elif not self.jumping:
                 self.animate_fight_inx = 0
                 self.animate_standing()
         else:
@@ -404,7 +531,14 @@ class Imp(GameOpponent):
                 else:
                     if self.animate_dieng():
                         self.kill()
-            
+                    if self.animate_dead_inx == 6:
+                        self.sound = choice(SOUNDS['imp']['deaths'])
+                        self.sound.set_volume(0.3)
+                        self.sound.play()  
+        if pygame.sprite.collide_mask(self, stolb):
+            self.image.set_alpha(0)
+        else:
+            self.image.set_alpha(255) 
 
 
 class HiddenSprite(pygame.sprite.Sprite):
@@ -429,7 +563,7 @@ class GameObject(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
     
     def update(self, *args):
-        pass    
+        pass
 
 
 class Door(GameObject):
@@ -450,6 +584,7 @@ class Door(GameObject):
                     i)
                      for i in range(
                          len(self.lst_animations))]
+        self.sound = SOUNDS['doors'][0]
         # print(self.lst_animations)
     
     def check_collide(self, collide_object):
@@ -457,7 +592,8 @@ class Door(GameObject):
         collide_object.mask = pygame.mask.from_surface(collide_object.image)
         if pygame.sprite.collide_mask(self, collide_object):
             if (type(collide_object) == Player 
-                or type(collide_object) == GameOpponent):
+                or type(collide_object) == GameOpponent 
+                or type(collide_object) == Imp):
                 if self.animate_inx != len(self.lst_animations) - 1:
                     if collide_object.reway:
                         collide_object.rect = collide_object.rect.move(20, 0)
@@ -511,6 +647,7 @@ class PerehodDoor(Door):
                      for i in range(
                          len(self.lst_animations))]
         self.door_way = ''
+        self.sound = SOUNDS['doors'][1]
         
     def animate_close(self):
         if self.animate_inx > 0:
@@ -625,6 +762,7 @@ class Hand(pygame.sprite.Sprite):
         self.must_make_hide_of_enemy = False
         self.must_make_hide_of_dead = False
         self.rotate = False
+        self.sound = ''
     
     def update(self, *args):
         if (self.must_make_hide or self.must_make_hide_of_enemy 
@@ -885,7 +1023,7 @@ class Player(pygame.sprite.Sprite):
             self.image.get_width() // 5, self.image.get_height() // 5))                
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
-        self.rect = self.rect.move(2300, 200)
+        self.rect = self.rect.move(6200, 200)
         self.animation_of_stand_inx = 1
         self.animation_of_move_inx = 0
         self.animation_of_jump_inx = 0
@@ -894,8 +1032,14 @@ class Player(pygame.sprite.Sprite):
         self.must_make_hide = False
         self.must_make_hide_of_enemy = False
         self.must_make_hide_of_dead = False
+        self.sound_type = ''
+        self.sound = choice(SOUNDS['walking_on_metal'])
+        self.step_const = randrange(3, 5)
+        self.step_time = self.step_const
+        self.tmp_for_sound_jump = 0
     
-    def update(self, *args):       
+    def update(self, *args):     
+        sprite_collide = pygame.sprite.spritecollideany(self, BLOCK_SPRITES)
         # print(self.must_make_hide)
         if args:
             if (self.must_make_hide or self.must_make_hide_of_enemy
@@ -912,6 +1056,7 @@ class Player(pygame.sprite.Sprite):
                     return 
             if (not self.with_pistol and self.pushing_time <= 0):
                 if args[0] == 'left':
+                    self.sound_type = 'walk'
                     self.rect = self.rect.move(-14, 0)
                     self.vector_x = -14                    
                     self.image = load_image(
@@ -926,6 +1071,7 @@ class Player(pygame.sprite.Sprite):
                     self.animation_of_move_inx %= length              
                     self.reway = True
                 if args[0] == 'right':
+                    self.sound_type = 'walk'
                     self.rect = self.rect.move(14, 0)
                     self.vector_x = 14                   
                     if self.reway:
@@ -995,7 +1141,7 @@ class Player(pygame.sprite.Sprite):
                     self.vector_x = 0
                     self.vector_y = 0                    
                     if self.v <= 0:
-                        self.v += 10                    
+                        self.v += 10
                     self.image = load_image(
                         self.animate_list_stand[self.animation_of_stand_inx])
                     self.image = pygame.transform.scale(self.image, (
@@ -1014,6 +1160,7 @@ class Player(pygame.sprite.Sprite):
                 # print('ok3')
                 # print('this', PLAYER_HAND)
                 if args[0] == 'left':
+                    self.sound_type = 'walk'
                     self.rect = self.rect.move(-14, 0)
                     self.vector_x = -14                    
                     length = len(self.animate_list_move_not_hand)
@@ -1028,6 +1175,7 @@ class Player(pygame.sprite.Sprite):
                         self.image.get_height() // 5))
                     self.image = pygame.transform.flip(self.image, True, False)
                 if args[0] == 'right':
+                    self.sound_type = 'walk'
                     self.rect = self.rect.move(14, 0)
                     self.vector_x = 14                   
                     if self.reway:
@@ -1109,6 +1257,40 @@ class Player(pygame.sprite.Sprite):
                     self.animate_list_stand_not_hand_inx = (tmp + 1)
                     self.animate_list_stand_not_hand_inx %= length
                     # clock.tick(20)
+        if not sprite_collide:
+            self.tmp_for_sound_jump += 1
+        if (self.sound_type == 'walk'
+            and pygame.sprite.spritecollideany(self, BLOCK_SPRITES)):
+            self.sound = choice(SOUNDS['walking_on_metal'])
+            if self.step_time <= 0:
+                self.step_const = randrange(3, 5)
+                self.step_time = self.step_const
+        else:
+            self.sound_type = ''
+        if self.v == -40:
+            self.sound = SOUNDS['metal_jump']
+            self.sound_type = 'jump'
+        elif self.tmp_for_sound_jump > 3 and sprite_collide:
+            self.sound = choice(SOUNDS['metal_landfall'])
+            self.sound_type = 'landfall'    
+            self.tmp_for_sound_jump = 0
+        print('sound_type:', self.sound_type)
+        if self.sound_type == '':
+            self.sound.stop()
+        elif self.sound_type == 'walk':
+            self.sound.set_volume(0.9)
+            if self.step_time == self.step_const:
+                self.sound.play()
+        elif self.sound_type == 'jump':
+            self.sound.set_volume(0.9)
+            self.sound.play()
+        elif self.sound_type == 'landfall':
+            self.sound.set_volume(0.9)
+            self.sound.play()            
+        self.sound_type = ''
+        print('step_time:', self.step_time)
+        self.step_time -= 1
+
 
 def terminate():
     pygame.quit()
@@ -1188,6 +1370,7 @@ def load_game():
 def start_screen():
     sound = pygame.mixer.Sound('music/menu_sound.wav')
     sound.play(loops=-1)
+    sound.set_volume(1)
     fon_image = load_image('menu/start_fon.png')
     ser = load_image('menu/particles/' + 'part000.jpg')
     video_list = ['menu/particles/' + elem
@@ -1384,9 +1567,15 @@ class Bullet(pygame.sprite.Sprite):
         self.mask = pygame.mask.from_surface(self.image)
         self.bullet_v = 0
         self.bullet_y = 3
+        self.step_const = 8
+        self.step_time = self.step_const
+        self.sound = SOUNDS['imp']['fireball']['flight']        
     
     def update(self, *args):
         self.rect = self.rect.move(self.bullet_v, 0)
+        for elem in BLOCK_SPRITES:
+            if self.rect.colliderect(elem.rect):
+                self.kill()             
         if self.rect.colliderect(wall1.rect):
             self.kill()     
         if pygame.sprite.collide_mask(self, door1):
@@ -1406,6 +1595,9 @@ class Bullet(pygame.sprite.Sprite):
 class FireBall(Bullet):
     def update(self, *args):
         self.rect = self.rect.move(self.bullet_v, self.bullet_y)
+        for elem in BLOCK_SPRITES:
+            if self.rect.colliderect(elem.rect):
+                self.kill()               
         if self.rect.colliderect(wall1.rect):
             self.kill()     
         if pygame.sprite.collide_mask(self, door1):
@@ -1427,7 +1619,12 @@ class FireBall(Bullet):
         if pygame.sprite.collide_mask(self, stolb):
             self.image.set_alpha(0)
         else:
-            self.image.set_alpha(255)     
+            self.image.set_alpha(255)    
+        if self.step_time <= 0:
+            self.step_time = self.step_const
+            self.sound.set_volume(0.05)
+            self.sound.play()
+        self.step_time -= 1
 
 
 class Camera:
@@ -1461,8 +1658,8 @@ class Camera:
 def func_pressed_space():
     if (player.with_pistol and player_hand.shooting_time == 0):
         # and global_shooting_time <= 0
-        player_hand.shooting_time = 36
-        global_shooting_time = 10
+        player_hand.shooting_time = 52
+        global_shooting_time = 52
         pistol_patron_y = player.rect.y + 57
         if player.reway:
             pistol_patron_v = -40
@@ -1530,7 +1727,8 @@ class GameOverHead(pygame.sprite.Sprite):
 
 
 def game_over():
-    sound = pygame.mixer.Sound('music/menu_sound.wav')
+    sound = SOUNDS['death_screen']
+    sound.set_volume(1)
     sound.play(loops=-1)
     head = GameOverHead()
     fon_image1 = load_image('menu/game_over/die_fon_dark.png')
@@ -1697,8 +1895,8 @@ class Room:
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
         enemys[0].rect = enemys[0].rect.move(300, 100)
-        '''enemys[1].rect = enemys[1].rect.move(300, 100)
-        enemys[2].rect = enemys[2].rect.move(200, 200)        
+        # enemys[1].rect = enemys[1].rect.move(300, 100)
+        '''enemys[2].rect = enemys[2].rect.move(200, 200)        
         enemys[3].rect = enemys[3].rect.move(400, 200)        
         enemys[4].rect = enemys[4].rect.move(500, 200)             
         enemys[5].rect = enemys[5].rect.move(600, 200)             
@@ -1720,10 +1918,10 @@ class Room:
 class Room2(Room):
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
-        enemys[0].rect = enemys[0].rect.move(1650, 100)
+        '''enemys[0].rect = enemys[0].rect.move(1650, 100)
         enemys[1].rect = enemys[1].rect.move(2050, 200)        
         enemys[2].rect = enemys[2].rect.move(2450, 200)        
-        '''enemys[3].rect = enemys[3].rect.move(1500, 200)             
+        enemys[3].rect = enemys[3].rect.move(1500, 200)             
         enemys[4].rect = enemys[4].rect.move(1600, 200)             
         enemys[5].rect = enemys[5].rect.move(1700, 200)'''
         for elem in enemys:
@@ -1733,9 +1931,9 @@ class Room2(Room):
 class Room3(Room):
     def __init__(self, enemys):
         self.enemys = pygame.sprite.Group()
-        enemys[0].rect = enemys[0].rect.move(7900, 100)
-        '''enemys[1].rect = enemys[1].rect.move(1450, 200)        
-        enemys[2].rect = enemys[2].rect.move(1400, 200)        
+        enemys[0].rect = enemys[0].rect.move(5500, 100)
+        '''enemys[1].rect = enemys[1].rect.move(6500, 200)        
+        enemys[2].rect = enemys[2].rect.move(7200, 200)        
         enemys[3].rect = enemys[3].rect.move(1500, 200)             
         enemys[4].rect = enemys[4].rect.move(1600, 200)             
         enemys[5].rect = enemys[5].rect.move(1700, 200)'''
@@ -1770,10 +1968,250 @@ class LoadScreen(pygame.sprite.Sprite):
             self.image = pygame.transform.scale(self.image, (WIDTH, HEIGHT))
 
 
+
+
+################################################################################
+##########################GameWithArcadeLibrary#################################
+################################################################################
+            
+import arcade
+import os
+
+SPRITE_SCALING = 0.5
+RIGHT_FACING = 0
+LEFT_FACING = 1
+SCREEN_WIDTH = 1200
+SCREEN_HEIGHT = 600
+SCREEN_TITLE = "DOOM 2D"
+CHARACTER_SCALING = 0.4
+LEFT_VIEWPORT_MARGIN = 250
+RIGHT_VIEWPORT_MARGIN = 250
+BOTTOM_VIEWPORT_MARGIN = 50
+TOP_VIEWPORT_MARGIN = 100
+PLAYER_MOVEMENT_SPEED = 14
+GRAVITY = 1
+PLAYER_JUMP_SPEED = 25
+
+VIEWPORT_MARGIN = 40
+
+MOVEMENT_SPEED = 5
+
+def load_texture_pair(filename):
+    try:
+        return [
+            arcade.load_texture(filename),
+            arcade.load_texture(filename, flipped_horizontally=True)
+        ]
+    except Exception:
+        print('NotFoundImage')
+
+
+class ArcadePlayer(arcade.Sprite):
+    def __init__(self, walk_textures):
+        super().__init__()
+        self.face_direction = RIGHT_FACING
+        self.walk_inx = 0
+        self.scale = CHARACTER_SCALING
+        self.walk_textures = walk_textures
+        self.texture = self.walk_textures[0][self.face_direction]
+        self.set_hit_box(self.texture.hit_box_points)
+    
+    def update_animation(self, delta_time: float = 0.00003):
+        if self.change_x != 0:
+            if self.change_x < 0:
+                self.face_direction = LEFT_FACING
+            if self.change_x > 0:
+                self.face_direction = RIGHT_FACING
+            try:
+                self.texture = self.walk_textures[self.walk_inx][self.face_direction]
+                self.walk_inx += 1
+            except Exception:
+                self.walk_inx = 0
+                self.texture = self.walk_textures[self.walk_inx][self.face_direction]
+                self.walk_inx += 1
+
+
+class MyGame(arcade.Window):
+    def __init__(self):
+        super().__init__(SCREEN_WIDTH, SCREEN_HEIGHT, SCREEN_TITLE, 
+                         fullscreen=True)
+        width, height = self.get_size()
+        self.set_viewport(0, width, 0, height)
+        arcade.set_background_color(arcade.color.AMAZON)
+        self.doomguy_walking = []
+        for elem in os.listdir('images/doomguy_going'):
+            texture = load_texture_pair('images/doomguy_going/{}'.format(elem))
+            self.doomguy_walking.append(texture)   
+        self.animations = {
+            'doomguy': {
+                'walking': self.doomguy_walking
+            }
+        }        
+        self.textures = {
+            'lift': {
+                'hall-background': arcade.load_texture(
+                    "images/locations/lift/fon.png"),
+                'over-door': arcade.load_texture(
+                    'images/locations/lift/over_door.png'),
+                'spusk-lift': arcade.load_texture(
+                    'images/locations/lift/spusk_lift.png'),
+                'stolb': arcade.load_texture(
+                    'images/locations/lift/stolb.png'),
+            }
+        }
+        self.sprite_image_paths = {
+            'lift': {
+                'ceiling': 'images/locations/komnata/ceiling.png', 
+                'pol': 'images/locations/komnata/ceiling.png',
+                'door': 'images/locations/lift/door/animation/{}'.format(
+                    os.listdir('images/locations/lift/door/animation')[0]),
+                'spusk-door': 'images/locations/lift/lift_all.png'
+            }
+        }
+        self.view_bottom = 0
+        self.view_left = 0        
+        self.player_list = None
+        self.wall_list = None
+        self.player_sprite = None
+        self.physics_engine = None
+        self.jump_pressed = False
+        self.move_left = False
+        self.move_right = False
+        self.player_sprite = ArcadePlayer(self.animations['doomguy']['walking'])
+
+    def setup(self):
+        self.view_bottom = 0
+        self.view_left = 0        
+        self.player_list = arcade.SpriteList()
+        self.wall_list = arcade.SpriteList(use_spatial_hash=True)
+        player_image_source = 'images/doomguy_going/0.png'
+        self.lift_ceiling = arcade.Sprite(
+            self.sprite_image_paths['lift']['ceiling'], 0.69)
+        self.lift_pol = arcade.Sprite(
+            self.sprite_image_paths['lift']['pol'], 0.83)
+        self.lift_door = arcade.Sprite(
+            self.sprite_image_paths['lift']['door'], 0.57)
+        self.spusk_door = arcade.Sprite(
+            self.sprite_image_paths['lift']['spusk-door'], 0.57)        
+        self.lift_door.center_x = -200
+        self.lift_door.center_y = 333
+        self.spusk_door.center_x = 1620
+        self.spusk_door.center_y = 410
+        self.lift_pol.center_x = 556
+        self.lift_pol.center_y = 2      
+        self.lift_ceiling.center_x = 710
+        self.lift_ceiling.center_y = 765                
+        self.wall_list.append(self.lift_ceiling) 
+        self.wall_list.append(self.lift_pol) 
+        self.wall_list.append(self.lift_door) 
+        self.wall_list.append(self.spusk_door) 
+        self.player_sprite.center_x = 364
+        self.player_sprite.center_y = 428
+        self.player_list.append(self.player_sprite) 
+        self.physics_engine = arcade.PhysicsEnginePlatformer(self.player_sprite, 
+                                                         self.wall_list, 
+                                                         GRAVITY)
+        
+    def on_draw(self):
+        arcade.start_render()           
+        width = self.textures['lift']['spusk-lift'].width * 0.45
+        height = self.textures['lift']['spusk-lift'].height * 0.45
+        arcade.draw_texture_rectangle(
+            1630, 400, width, height, self.textures['lift']['spusk-lift'])                 
+        width = self.textures['lift']['hall-background'].width * 0.7
+        height = self.textures['lift']['hall-background'].height * 0.7
+        arcade.draw_texture_rectangle(
+            700, 400, width, height, self.textures['lift']['hall-background'])
+        width = self.textures['lift']['over-door'].width * 0.6
+        height = self.textures['lift']['over-door'].height * 0.6
+        arcade.draw_texture_rectangle(
+            -207, 639, width, height, self.textures['lift']['over-door'])        
+        self.player_list.draw()
+        self.wall_list.draw()
+        width = self.textures['lift']['stolb'].width * 0.6
+        height = self.textures['lift']['stolb'].height * 0.6
+        arcade.draw_texture_rectangle(
+            0, 500, width, height, self.textures['lift']['stolb'])                
+        left, screen_width, bottom, screen_height = self.get_viewport()
+    
+    def on_key_release(self, key, modifiers):
+        if key == arcade.key.LEFT or key == arcade.key.A:
+            self.player_sprite.change_x = 0
+            self.move_left = False
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.player_sprite.change_x = 0
+            self.move_right = False
+        elif key == arcade.key.UP or key == arcade.key.W:
+            self.jump_pressed = False
+    
+    def on_key_press(self, key, modifiers):
+        if key == arcade.key.F12:
+            self.set_fullscreen(not self.fullscreen)
+            width, height = self.get_size()
+            self.set_viewport(0, width, 0, height)
+        elif key == arcade.key.UP or key == arcade.key.W:
+            if self.physics_engine.can_jump():
+                self.jump_pressed = True
+        elif key == arcade.key.LEFT or key == arcade.key.A:
+            self.move_left = True
+            self.move_right = False
+        elif key == arcade.key.RIGHT or key == arcade.key.D:
+            self.move_right = True
+            self.move_left = False
+    
+    def on_update(self, delta_time):
+        self.physics_engine.update()
+        self.player_list.update_animation(delta_time)
+        changed = False
+        left_boundary = self.view_left + LEFT_VIEWPORT_MARGIN
+        if self.jump_pressed and self.physics_engine.can_jump():
+            self.player_sprite.change_y = PLAYER_JUMP_SPEED
+        if self.move_right:
+            self.player_sprite.change_x = PLAYER_MOVEMENT_SPEED
+        if self.move_left:
+            self.player_sprite.change_x = -PLAYER_MOVEMENT_SPEED
+        if self.player_sprite.left < left_boundary:
+            self.view_left -= left_boundary - self.player_sprite.left
+            changed = True
+        right_boundary = self.view_left + SCREEN_WIDTH - RIGHT_VIEWPORT_MARGIN
+        if self.player_sprite.right > right_boundary:
+            self.view_left += self.player_sprite.right - right_boundary
+            changed = True
+        top_boundary = self.view_bottom + SCREEN_HEIGHT - TOP_VIEWPORT_MARGIN
+        if self.player_sprite.top > top_boundary:
+            self.view_bottom += self.player_sprite.top - top_boundary
+            changed = True
+        bottom_boundary = self.view_bottom + BOTTOM_VIEWPORT_MARGIN
+        if self.player_sprite.bottom < bottom_boundary:
+            self.view_bottom -= bottom_boundary - self.player_sprite.bottom
+            changed = True
+        if changed:
+            self.view_bottom = int(self.view_bottom)
+            self.view_left = int(self.view_left)
+            arcade.set_viewport(self.view_left,
+                                SCREEN_WIDTH + self.view_left,
+                                self.view_bottom,
+                                SCREEN_HEIGHT + self.view_bottom)
+
+
+def arcade_main():
+    window = MyGame()
+    window.setup()
+    arcade.run()
+
+################################################################################
+################################################################################
+################################################################################
+
+
+
 if __name__ == '__main__':
+    arcade_main()
+    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
     loader = Loader()
     start_screen()
-    sound = pygame.mixer.Sound('music/gameplay_sound.wav')
+    sound = choice(SOUNDS['gameplay'])
+    sound.set_volume(1)
     sound_channel = sound.play(loops=-1)
     clock = pygame.time.Clock()
     load_screen = LoadScreen()
@@ -1851,6 +2289,7 @@ if __name__ == '__main__':
     # clock.tick(FPS)
     pygame.display.flip()    
     wall3.image = tmp_image
+    # tmp_image.set_alpha(0)
     wall3.image.fill((255, 0, 0))
     wall3.rect = wall3.image.get_rect()
     wall3.rect = wall3.rect.move(6300, 360)
@@ -1868,6 +2307,7 @@ if __name__ == '__main__':
     tmp_image = pygame.Surface((75, 2000))
     # tmp_image.set_alpha(0)
     wall2.image = tmp_image
+    tmp_image.set_alpha(0)
     wall2.image.fill((255, 0, 0))
     wall2.rect = wall2.image.get_rect()
     SCREEN.fill((0, 0, 0))
@@ -2078,8 +2518,6 @@ if __name__ == '__main__':
                                         (start_room_fon_pol.get_width() // 2, 
                                          start_room_fon_pol.get_height() // 2))  
     start_room_fon_pol_mask = pygame.mask.from_surface(start_room_fon_pol)
-    demonical = GameOpponent()
-    imp = Imp()
     # ALL_SPRITES.add(demonical)
     # ALL_SPRITES.add(imp)
     stolb = GameObject('locations/start_location/stolb.png')
@@ -2216,9 +2654,10 @@ if __name__ == '__main__':
     armor = Armor()
     wearon_logo = WearonLogo()
     ammo = Ammo()
-    room_1_enemys = Room([GameOpponent()])
-    room_2_enemys = Room2([GameOpponent(), Imp(), Imp()])
-    room_3_enemys = Room3([Imp()])
+    room_1_enemys = Room([Imp()]) #GameOpponent(), 
+    room_2_enemys = Room2([]) #Imp(), GameOpponent(), Imp(), Imp()
+    main_enemy = Imp()
+    room_3_enemys = Room3([main_enemy])
     room_1_enemys.active()
     SCREEN.fill((0, 0, 0))
     SCREEN.blit(load_screen.image, load_screen.rect)
@@ -2266,7 +2705,12 @@ if __name__ == '__main__':
     pygame.display.flip()
     pauseform = PauseForm()
     load_game()
+    if sound == SOUNDS['gameplay'][1]:
+        sound.set_volume(0.05)
+    else:
+        sound.set_volume(0.4)    
     while running:
+        sound_channel.queue(choice(SOUNDS['gameplay']))
         # print(demonical.print_info())
         pauseform.pressing_Esc = False
         for elem in ALL_SPRITES:
@@ -2309,6 +2753,11 @@ if __name__ == '__main__':
             wearon_logo.receive_wearon(event)
             if event.type == pygame.QUIT:
                 running = False
+            if keys[pygame.K_UP]:
+                way = 'up'
+                for elem in PLAYER_GROUP:
+                    if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
+                        count_jumps = 16                                
             if keys[pygame.K_LEFT] and keys[pygame.K_UP]:
                 way = 'up'
                 for elem in PLAYER_GROUP:
@@ -2335,6 +2784,9 @@ if __name__ == '__main__':
                 jumping_way = 'right'
                 pressing_K_R = True
                 player.reway = False
+            if event.type == pygame.KEYDOWN:
+                if event.key == pygame.K_SPACE:
+                    func_pressed_space()                
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_e:
                     pressing_K_e = True
@@ -2344,7 +2796,6 @@ if __name__ == '__main__':
                     sound_channel.unpause()
                 if event.key == pygame.K_1 or keys[pygame.K_1]:
                     PRESSING_K_1 = not PRESSING_K_1
-                    # print(PRESSING_SPACE)
                     if PRESSING_K_1:
                         player_hand.animation_do = False
                         player_hand.animation_downing_hand_do = True
@@ -2439,10 +2890,15 @@ if __name__ == '__main__':
                 door2.update('close')
             else:
                 door2.update('open')
+        if room_3_enemys.all_enemys_dead():
+            pygame.quit()
         # if player.collide
         # print(player.pushing_time)
         door1.check_collide(player)
         door2.check_collide(player)
+        for elem in room_3_enemys.enemys:
+            door1.check_collide(elem)
+            door2.check_collide(elem)    
         for elem in room_2_enemys.enemys:
             door1.check_collide(elem)
             door2.check_collide(elem)
@@ -2459,9 +2915,51 @@ if __name__ == '__main__':
         clock.tick(FPS)            
         global_shooting_time -= 1    
         pygame.display.flip()
-        for elem in room_3_enemys.enemys:
-            # print(elem.rect.colliderect(wall3.rect))
-            pass
-        print('player_coords(x:{}, y:{})'.format(player.rect.x, player.rect.y))
+        tmp = False
+        if player_hand.animate_list_push_inx == 6:
+            for elem in ALL_SPRITES:
+                if (pygame.sprite.collide_mask(player_hand, elem) 
+                    and (type(elem) == Imp or type(elem) == GameOpponent)):
+                    tmp = True
+                    break
+            if tmp:
+                player_hand.sound = SOUNDS['punch']['hit']
+                player_hand.sound.set_volume(0.9)
+                player_hand.sound.play()
+            else:
+                player_hand.sound = SOUNDS['punch']['miss']
+                player_hand.sound.set_volume(0.1)
+                player_hand.sound.play()  
+        print(player_hand.shooting_time)
+        if player_hand.shooting_time == 34:
+            player_hand.sound = choice(SOUNDS['pistol_shot'])
+            player_hand.sound.set_volume(0.9)
+            player_hand.sound.play() 
+        if not door1.closed_door:
+            if door1.animate_inx == 2:
+                door1.sound.set_volume(0.4)
+                door1.sound.play()
+        else:
+            if door1.animate_inx == 28:
+                door1.sound.set_volume(0.4)
+                door1.sound.play()            
+        if door2.animate_inx == 52 and player.rect.x < door2.rect.x:
+            door2.sound.set_volume(0.4)
+            door2.sound.play()                   
+        if door2.animate_inx == 2 and player.rect.x > door2.rect.x:
+            door2.sound.set_volume(0.4)
+            door2.sound.play()
+        for elem in ALL_SPRITES:
+            if (room_ceiling.rect.colliderect(elem.rect) 
+                and (type(elem) == Player or type(elem) == Imp)):
+                elem.rect = elem.rect.move(0, 30)
+        for elem in ALL_SPRITES:
+            if (elem.rect.colliderect(wall3.rect)
+                and (type(elem) == Imp or type(elem) == GameOpponent)):
+                    if elem.reway:
+                        elem.rect = elem.rect.move(9, 0)
+                    else:
+                        elem.rect = elem.rect.move(-9, 0)
+        print('way:', way)
     pygame.quit()
     pygame.mixer.quit()
