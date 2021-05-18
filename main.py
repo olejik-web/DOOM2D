@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os, sys
 import pygame
 import keyboard
@@ -9,6 +10,7 @@ from interface_elems import Button, DialogWindow, YesButton, NoButton
 from interface_elems import ContinueButton, InterfaceWindow, Hp, Armor
 from interface_elems import WearonLogo, Ammo, StartInControlPointButton
 from interface_elems import ExitOnWorkTableButton, GameOverExitButton
+from interface_elems import Text, Key
 from opponents import Opponent
 import arcade
 
@@ -33,8 +35,11 @@ PLAYER_GROUP = pygame.sprite.Group()
 FIRST_LEVEL_GROUP = pygame.sprite.Group()
 INTERFACE_GROUP = pygame.sprite.Group()
 OPPONENTS = pygame.sprite.Group()
+TRAINING_SPRITES = pygame.sprite.Group()
 pygame.mixer.init()
 SOUNDS = {
+    'load_music': pygame.mixer.Sound(
+        'music/doomguy/jump_on_a_matal/jump.wav'),
     'metal_jump': pygame.mixer.Sound(
         'music/doomguy/jump_on_a_matal/jump.wav'),
     'metal_landfall': [pygame.mixer.Sound(
@@ -140,8 +145,12 @@ class PlayerDead(pygame.sprite.Sprite):
 
 class GameOpponent(Opponent):
     def update(self, *args):
+        if self.animate_list_fire:
+            self.animate_fire()
+            return         
         for elem in ALL_SPRITES:
-            if pygame.sprite.collide_mask(self, elem) and type(elem) == Bullet:
+            if (pygame.sprite.collide_mask(self, elem) and type(elem) == Bullet 
+                and not self.animate_list_fire):
                 self.hp -= 2
                 elem.kill()
         if (player_hand.animate_list_push_inx == 3 
@@ -149,6 +158,9 @@ class GameOpponent(Opponent):
             self.hp -= 1
         if not check_collide(self, BLOCK_SPRITES):
             self.rect = self.rect.move(0, self.gravity)
+            self.image = load_image(self.animate_list_stand[0])
+            self.image = pygame.transform.scale(self.image, (
+                self.image.get_width() // 5, self.image.get_height() // 5))                        
         else:
             r = player.rect.x - self.rect.x
             if self.hp > 0:
@@ -209,6 +221,11 @@ class Imp(GameOpponent):
         self.hp = 8
         self.make_kayo_animation = False
         self.image = load_image('imp/imp_stand/0.png')
+        self.animate_list_fire = sorted(['fire' + elem
+                 for elem in os.listdir('images/fire')
+                 if os.path.isfile('images/fire/' + elem)])
+        self.animate_list_fire = ['fire/{}.png'.format(i) 
+                                  for i in range(len(self.animate_list_fire))]        
         self.animate_list_move = sorted(['imp/imp_run/' + elem
                  for elem in os.listdir('images/imp/imp_run')
                  if os.path.isfile('images/imp/imp_run/' + elem)])
@@ -267,6 +284,11 @@ class Imp(GameOpponent):
         self.animate_list_jump = ['imp/imp_jump/{}.png'.format(i + 1) 
                                   for i in range(len(
                                       self.animate_list_jump))]
+        self.animate_list_fire = sorted(['fire' + elem
+                 for elem in os.listdir('images/fire')
+                 if os.path.isfile('images/fire/' + elem)])
+        self.animate_list_fire = ['fire/{}.png'.format(i) 
+                                  for i in range(len(self.animate_list_fire))]                   
         self.fireball_image = load_image('imp/fireboll.png')
         self.fireball_image = pygame.transform.scale(self.fireball_image, (
             self.fireball_image.get_width() // 6, 
@@ -360,6 +382,9 @@ class Imp(GameOpponent):
         self.rect = self.rect.move(0, self.up_v)                        
         if self.up_v < 0:
             self.up_v += self.gravity
+        if self.animate_list_fire:
+            self.animate_fire()
+            return
         for elem in ALL_SPRITES:
             if pygame.sprite.collide_mask(self, elem) and type(elem) == Bullet:
                 self.hp -= 2
@@ -561,6 +586,18 @@ class GameObject(pygame.sprite.Sprite):
         self.image = load_image(object_image)
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
+    
+    def check_collide(self, collide_object):
+        self.mask = pygame.mask.from_surface(self.image)
+        collide_object.mask = pygame.mask.from_surface(collide_object.image)
+        if pygame.sprite.collide_mask(self, collide_object):
+            if (type(collide_object) == Player 
+                or type(collide_object) == GameOpponent 
+                or type(collide_object) == Imp):
+                if collide_object.reway:
+                    collide_object.rect = collide_object.rect.move(20, 0)
+                else:
+                    collide_object.rect = collide_object.rect.move(-20, 0)    
     
     def update(self, *args):
         pass
@@ -1023,7 +1060,7 @@ class Player(pygame.sprite.Sprite):
             self.image.get_width() // 5, self.image.get_height() // 5))                
         self.rect = self.image.get_rect()
         self.mask = pygame.mask.from_surface(self.image)
-        self.rect = self.rect.move(6200, 200)
+        self.rect = self.rect.move(700, 200)
         self.animation_of_stand_inx = 1
         self.animation_of_move_inx = 0
         self.animation_of_jump_inx = 0
@@ -1051,8 +1088,13 @@ class Player(pygame.sprite.Sprite):
                 if self.rect.colliderect(elem.rect):
                     if self.rect.x > elem.rect.x:
                         self.rect = self.rect.move(20, 0)
-                    else:
+                    elif self.rect.x < elem.rect.x:
                         self.rect = self.rect.move(-20, 0)
+                    else:
+                        if self.reway:
+                            self.rect = self.rect.move(20, 0)
+                        else:
+                            self.rect = self.rect.move(-20, 0)
                     return 
             if (not self.with_pistol and self.pushing_time <= 0):
                 if args[0] == 'left':
@@ -1893,9 +1935,10 @@ def show_pause():
 
 class Room:
     def __init__(self, enemys):
+        self.activated = False
         self.enemys = pygame.sprite.Group()
         enemys[0].rect = enemys[0].rect.move(300, 100)
-        # enemys[1].rect = enemys[1].rect.move(300, 100)
+        enemys[1].rect = enemys[1].rect.move(600, 100)
         '''enemys[2].rect = enemys[2].rect.move(200, 200)        
         enemys[3].rect = enemys[3].rect.move(400, 200)        
         enemys[4].rect = enemys[4].rect.move(500, 200)             
@@ -1905,6 +1948,7 @@ class Room:
             self.enemys.add(elem)
     
     def active(self):
+        self.activated = True
         print('len self.enemys =', len(self.enemys))
         for elem in self.enemys:
             ALL_SPRITES.add(elem)
@@ -1917,6 +1961,7 @@ class Room:
 
 class Room2(Room):
     def __init__(self, enemys):
+        self.activated = False
         self.enemys = pygame.sprite.Group()
         '''enemys[0].rect = enemys[0].rect.move(1650, 100)
         enemys[1].rect = enemys[1].rect.move(2050, 200)        
@@ -1930,6 +1975,7 @@ class Room2(Room):
 
 class Room3(Room):
     def __init__(self, enemys):
+        self.activated = False
         self.enemys = pygame.sprite.Group()
         enemys[0].rect = enemys[0].rect.move(5500, 100)
         '''enemys[1].rect = enemys[1].rect.move(6500, 200)        
@@ -2208,8 +2254,64 @@ def arcade_main():
 if __name__ == '__main__':
     arcade_main()
     SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+    wearon_1 = Key('training/first_weapon_1.png')
+    wearon_1.rect = wearon_1.rect.move(-20, 140)
+    wearon_1.key = 'wearon'
+    TRAINING_SPRITES.add(wearon_1)
+    wearon_2 = Key('training/second_weapon_1.png')
+    wearon_2.rect = wearon_2.rect.move(100, 140)
+    wearon_2.key = 'wearon2'
+    TRAINING_SPRITES.add(wearon_2)    
+    wearon_3 = Key('training/third_weapon_1.png')
+    wearon_3.rect = wearon_3.rect.move(220, 140)
+    wearon_3.key = 'wearon3'
+    TRAINING_SPRITES.add(wearon_3)        
+    key_move_left = Key('training/left_1.png')
+    key_move_left.rect = key_move_left.rect.move(380, 140)
+    key_move_left.key = 'left'
+    TRAINING_SPRITES.add(key_move_left)   
+    key_move_up = Key('training/up_1.png')
+    key_move_up.rect = key_move_up.rect.move(500, 140)
+    key_move_up.key = 'up'
+    TRAINING_SPRITES.add(key_move_up)        
+    key_move_r = Key('training/right_1.png')
+    key_move_r.rect = key_move_r.rect.move(620, 140)
+    key_move_r.key = 'right'
+    TRAINING_SPRITES.add(key_move_r)    
+    key_space = Key('training/space_1.png')
+    key_space.rect = key_space.rect.move(790, 120)
+    key_space.key = 'space'
+    TRAINING_SPRITES.add(key_space)
+    key_word_wearon_1 = Text('training/words/weapon_1.png')
+    key_word_wearon_1.rect = key_word_wearon_1.rect.move(30, 150)
+    key_word_wearon_1.key = 'wearon'
+    TRAINING_SPRITES.add(key_word_wearon_1)
+    key_word_wearon_2 = Text('training/words/weapon_2.png')
+    key_word_wearon_2.rect = key_word_wearon_2.rect.move(145, 150)
+    key_word_wearon_2.key = 'wearon2'
+    TRAINING_SPRITES.add(key_word_wearon_2)    
+    key_word_wearon_3 = Text('training/words/weapon_3.png')
+    key_word_wearon_3.rect = key_word_wearon_3.rect.move(260, 150)
+    key_word_wearon_3.key = 'wearon3'
+    TRAINING_SPRITES.add(key_word_wearon_3)        
+    key_word_left = Text('training/words/left_word.png')
+    key_word_left.rect = key_word_left.rect.move(435, 160)
+    key_word_left.key = 'left'
+    TRAINING_SPRITES.add(key_word_left)            
+    key_word_jump = Text('training/words/jump_word.png')
+    key_word_jump.rect = key_word_jump.rect.move(555, 160)
+    key_word_jump.key = 'up'
+    TRAINING_SPRITES.add(key_word_jump)                  
+    key_word_right = Text('training/words/right_word.png')
+    key_word_right.rect = key_word_right.rect.move(670, 160)
+    key_word_right.key = 'right'
+    TRAINING_SPRITES.add(key_word_right)              
+    key_word_shoot_punch = Text('training/words/shoot_punch.png')
+    key_word_shoot_punch.rect = key_word_shoot_punch.rect.move(840, 150)
+    key_word_shoot_punch.key = 'space'
+    TRAINING_SPRITES.add(key_word_shoot_punch)             
     loader = Loader()
-    start_screen()
+    # start_screen()
     sound = choice(SOUNDS['gameplay'])
     sound.set_volume(1)
     sound_channel = sound.play(loops=-1)
@@ -2654,20 +2756,17 @@ if __name__ == '__main__':
     armor = Armor()
     wearon_logo = WearonLogo()
     ammo = Ammo()
-    room_1_enemys = Room([Imp()]) #GameOpponent(), 
+    room_1_enemys = Room([Imp(), GameOpponent()]) #GameOpponent(), 
     room_2_enemys = Room2([]) #Imp(), GameOpponent(), Imp(), Imp()
     main_enemy = Imp()
     room_3_enemys = Room3([main_enemy])
-    room_1_enemys.active()
     SCREEN.fill((0, 0, 0))
     SCREEN.blit(load_screen.image, load_screen.rect)
     load_screen.update()
     SCREEN.blit(loader.image, loader.rect)
     loader.update()    
     # clock.tick(FPS)
-    pygame.display.flip()    
-    room_2_enemys.active()
-    room_3_enemys.active()
+    pygame.display.flip() 
     ALL_SPRITES.add(interface_window)
     ALL_SPRITES.add(hp)
     ALL_SPRITES.add(armor)
@@ -2710,6 +2809,7 @@ if __name__ == '__main__':
     else:
         sound.set_volume(0.4)    
     while running:
+        TRAINING_SPRITES.update('visible')        
         sound_channel.queue(choice(SOUNDS['gameplay']))
         # print(demonical.print_info())
         pauseform.pressing_Esc = False
@@ -2750,6 +2850,14 @@ if __name__ == '__main__':
         # print(jumping_way)
         for event in pygame.event.get():
             keys = pygame.key.get_pressed()
+            if keys[pygame.K_1]:
+                TRAINING_SPRITES.update('wearon')            
+            if keys[pygame.K_2]:
+                TRAINING_SPRITES.update('wearon2')
+            if keys[pygame.K_3]:
+                TRAINING_SPRITES.update('wearon3')
+            if keys[pygame.K_SPACE]:
+                TRAINING_SPRITES.update('space')
             wearon_logo.receive_wearon(event)
             if event.type == pygame.QUIT:
                 running = False
@@ -2757,7 +2865,9 @@ if __name__ == '__main__':
                 way = 'up'
                 for elem in PLAYER_GROUP:
                     if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
-                        count_jumps = 16                                
+                        count_jumps = 16   
+                print('up')
+                TRAINING_SPRITES.update('up')
             if keys[pygame.K_LEFT] and keys[pygame.K_UP]:
                 way = 'up'
                 for elem in PLAYER_GROUP:
@@ -2767,6 +2877,7 @@ if __name__ == '__main__':
                 pressing_K_L = True 
                 player.reway = True
             elif keys[pygame.K_LEFT]:
+                TRAINING_SPRITES.update('left')
                 way = 'left'
                 jumping_way = 'left'
                 pressing_K_L = True    
@@ -2780,6 +2891,7 @@ if __name__ == '__main__':
                 pressing_K_R = True         
                 player.reway = False
             elif keys[pygame.K_RIGHT]:
+                TRAINING_SPRITES.update('right')
                 way = 'right'
                 jumping_way = 'right'
                 pressing_K_R = True
@@ -2838,8 +2950,14 @@ if __name__ == '__main__':
         # print(way)
         # ALL_SPRITES.update()
         # print(player_hand in ALL_SPRITES)
-        player_dead.update_place_of_dead()        
-        ALL_SPRITES.draw(SCREEN)
+        player_dead.update_place_of_dead()
+        for elem in ALL_SPRITES:
+            if elem not in INTERFACE_GROUP:
+                SCREEN.blit(elem.image, elem.rect)
+        for elem in ALL_SPRITES:
+            if elem in INTERFACE_GROUP:
+                SCREEN.blit(elem.image, elem.rect)
+        TRAINING_SPRITES.draw(SCREEN)
         if player.hp <= 0 and player.armor <= 0:
             player.must_make_hide_of_dead = True
             player_hand.must_make_hide_of_dead = True
@@ -2953,6 +3071,8 @@ if __name__ == '__main__':
             if (room_ceiling.rect.colliderect(elem.rect) 
                 and (type(elem) == Player or type(elem) == Imp)):
                 elem.rect = elem.rect.move(0, 30)
+        for elem in WALL_SPRITES:
+            elem.check_collide(player)
         for elem in ALL_SPRITES:
             if (elem.rect.colliderect(wall3.rect)
                 and (type(elem) == Imp or type(elem) == GameOpponent)):
@@ -2961,5 +3081,10 @@ if __name__ == '__main__':
                     else:
                         elem.rect = elem.rect.move(-9, 0)
         print('way:', way)
+        if (not any([elem.image.get_alpha() for elem in TRAINING_SPRITES]) 
+            and not room_1_enemys.activated):
+            room_1_enemys.active()
+            room_2_enemys.active()
+            room_3_enemys.active()        
     pygame.quit()
     pygame.mixer.quit()

@@ -55,6 +55,11 @@ class Opponent(pygame.sprite.Sprite):
                  if os.path.isfile('images/demonical/demonical_fatal_dead/' + elem)])
         self.animate_list_fatal_dead = ['demonical/demonical_fatal_dead/{}.png'.format(i) 
                                   for i in range(len(self.animate_list_fatal_dead))]        
+        self.animate_list_fire = sorted(['fire' + elem
+                 for elem in os.listdir('images/fire')
+                 if os.path.isfile('images/fire/' + elem)])
+        self.animate_list_fire = ['fire/{}.png'.format(i) 
+                                  for i in range(len(self.animate_list_fire))]           
         self.image = pygame.transform.scale(self.image, (
             self.image.get_width() // 5, self.image.get_height() // 5))
         self.gravity = 10
@@ -80,6 +85,15 @@ class Opponent(pygame.sprite.Sprite):
         except Exception:
             return True
     
+    def animate_fire(self):
+        try:
+            self.image = load_image(self.animate_list_fire[0])
+            self.image = pygame.transform.scale(self.image, (
+                self.image.get_width() // 5, self.image.get_height() // 5))
+            del self.animate_list_fire[0]
+        except Exception:
+            pass
+            
     def animate_standing(self):
         try:
             self.image = load_image(self.animate_list_stand[self.animate_inx])

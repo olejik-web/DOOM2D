@@ -350,4 +350,71 @@ class Ammo(pygame.sprite.Sprite):
                                              self.image.get_height() // 5))
         self.rect = self.image.get_rect()
         self.rect = self.rect.move(0, 495)
+        
+
+class Key(pygame.sprite.Sprite):
+    def __init__(self, image_path):
+        super().__init__()
+        self.image = load_image(image_path)
+        self.image = pygame.transform.scale(self.image, 
+                                            (self.image.get_width(), 
+                                             self.image.get_height()))
+        self.rect = self.image.get_rect()
+        self.rect = self.rect.move(0, 0)    
+        self.key = ''
+        self.make_visible = False      
+
+    def update(self, key='not key'):
+        if key == self.key and not self.make_visible:
+            key_move_up_x = self.rect.x
+            key_move_up_y = self.rect.y
+            if self.key == 'up':
+                self.image = load_image('training/up_2.png')
+            if self.key == 'left':
+                self.image = load_image('training/left_2.png')
+            if self.key == 'space':
+                self.image = load_image('training/space_2.png')
+            if self.key == 'wearon':
+                self.image = load_image('training/first_weapon_2.png')
+            if self.key == 'wearon2':
+                self.image = load_image('training/second_weapon_2.png')
+            if self.key == 'wearon3':
+                self.image = load_image('training/third_weapon_2.png')
+            if self.key == 'right':
+                self.image = load_image('training/right_2.png')
+            self.image = pygame.transform.scale(self.image, 
+                                                (self.image.get_width(), 
+                                                 self.image.get_height()))
+            self.rect = self.image.get_rect()         
+            self.rect = self.rect.move(key_move_up_x, 
+                                                     key_move_up_y)            
+            self.make_visible = True
+        if self.make_visible and key == 'visible':
+            try:
+                self.image.set_alpha(self.image.get_alpha() - 10)
+            except Exception:
+                self.kill()            
+
+
+class Text(pygame.sprite.Sprite):
+    def __init__(self, image_path):
+        super().__init__()
+        self.image = load_image(image_path)
+        self.image = pygame.transform.scale(self.image, 
+                                            (self.image.get_width(), 
+                                             self.image.get_height()))
+        self.rect = self.image.get_rect()
+        self.rect = self.rect.move(0, 0)    
+        self.key = ''
+        self.make_visible = False
+
+    def update(self, key='not key'):
+        if key == self.key and not self.make_visible:
+            self.make_visible = True
+        if self.make_visible and key == 'visible':
+            try:
+                self.image.set_alpha(self.image.get_alpha() - 10)
+            except Exception:
+                self.kill()  
+
 pygame.mixer.quit()
