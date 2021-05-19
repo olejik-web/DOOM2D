@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os, sys
 import pygame
 import keyboard
@@ -163,4 +164,3 @@ class Opponent(pygame.sprite.Sprite):
     
     def print_info(self):
         print(self.animate_list_stand)
-        print('info')

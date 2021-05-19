@@ -9,7 +9,7 @@ import getkey
 from interface_elems import Button, DialogWindow, YesButton, NoButton
 from interface_elems import ContinueButton, InterfaceWindow, Hp, Armor
 from interface_elems import WearonLogo, Ammo, StartInControlPointButton
-from interface_elems import ExitOnWorkTableButton, GameOverExitButton
+from interface_elems import ExitInMainMenu, GameOverExitButton
 from interface_elems import Text, Key
 from opponents import Opponent
 import arcade
@@ -1786,7 +1786,7 @@ def game_over():
     start_in_control_button.image = start_in_control_button.standart_image
     start_in_control_button.rect = start_in_control_button.image.get_rect()
     start_in_control_button.rect = start_in_control_button.rect.move(48, 420)    
-    button3 = ExitOnWorkTableButton()
+    button3 = ExitInMainMenu()
     button3.image = button3.standart_image
     button3.rect = button3.image.get_rect()
     button3.rect = button3.rect.move(40, 460)
@@ -1824,6 +1824,8 @@ def game_over():
             if no_button.check_event(event) == 'mouse_click':
                 exit_dialog.need_show = False
                 exit_dialog.animation_inx = 0
+            if button3.check_event(event) == 'mouse_click':
+                return 'ExitOnMainMenu'
             if event.type == pygame.QUIT:
                 terminate()
         SCREEN.fill((0, 0, 0))
@@ -1842,7 +1844,8 @@ def game_over():
                 SCREEN.blit(no_button.image, no_button.rect) 
                 SCREEN.blit(yes_button.image, yes_button.rect) 
         head.update()
-        pygame.display.flip()    
+        pygame.display.flip()  
+    return True
 
 
 # root = Tk()
@@ -2021,7 +2024,6 @@ class LoadScreen(pygame.sprite.Sprite):
 ################################################################################
             
 import arcade
-import os
 
 SPRITE_SCALING = 0.5
 RIGHT_FACING = 0
@@ -2053,16 +2055,19 @@ def load_texture_pair(filename):
 
 
 class ArcadePlayer(arcade.Sprite):
-    def __init__(self, walk_textures):
+    def __init__(self, walk_textures, standing_textures):
         super().__init__()
         self.face_direction = RIGHT_FACING
         self.walk_inx = 0
+        self.stand_inx = 0
         self.scale = CHARACTER_SCALING
         self.walk_textures = walk_textures
-        self.texture = self.walk_textures[0][self.face_direction]
+        self.stand_textures = standing_textures
+        self.texture = self.stand_textures[0][self.face_direction]
         self.set_hit_box(self.texture.hit_box_points)
     
     def update_animation(self, delta_time: float = 0.00003):
+        print('self.stand_inx', self.stand_inx)
         if self.change_x != 0:
             if self.change_x < 0:
                 self.face_direction = LEFT_FACING
@@ -2075,6 +2080,15 @@ class ArcadePlayer(arcade.Sprite):
                 self.walk_inx = 0
                 self.texture = self.walk_textures[self.walk_inx][self.face_direction]
                 self.walk_inx += 1
+        elif self.change_x == 0 and self.change_y == 0:
+            print('self.stand_inx', self.stand_inx)
+            try:
+                self.texture = self.stand_textures[self.stand_inx][self.face_direction]
+                self.stand_inx += 1
+            except Exception:
+                self.stand_inx = 0
+                self.texture = self.stand_textures[self.stand_inx][self.face_direction]
+                self.stand_inx += 1
 
 
 class MyGame(arcade.Window):
@@ -2085,14 +2099,21 @@ class MyGame(arcade.Window):
         self.set_viewport(0, width, 0, height)
         arcade.set_background_color(arcade.color.AMAZON)
         self.doomguy_walking = []
+        self.doomguy_standing = []
         for elem in os.listdir('images/doomguy_going'):
             texture = load_texture_pair('images/doomguy_going/{}'.format(elem))
             self.doomguy_walking.append(texture)   
+        for elem in os.listdir('images/doomguy_standing'):
+            if os.path.isfile('images/doomguy_standing/' + elem):
+                texture = load_texture_pair(
+                    'images/doomguy_standing/{}'.format(elem))
+                self.doomguy_standing.append(texture)   
         self.animations = {
             'doomguy': {
-                'walking': self.doomguy_walking
+                'walking': self.doomguy_walking,
+                'standing': self.doomguy_standing,
             }
-        }        
+        }
         self.textures = {
             'lift': {
                 'hall-background': arcade.load_texture(
@@ -2123,7 +2144,9 @@ class MyGame(arcade.Window):
         self.jump_pressed = False
         self.move_left = False
         self.move_right = False
-        self.player_sprite = ArcadePlayer(self.animations['doomguy']['walking'])
+        self.player_sprite = ArcadePlayer(
+            self.animations['doomguy']['walking'], 
+            self.animations['doomguy']['standing'])
 
     def setup(self):
         self.view_bottom = 0
@@ -2253,838 +2276,851 @@ def arcade_main():
 
 if __name__ == '__main__':
     arcade_main()
-    SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
-    wearon_1 = Key('training/first_weapon_1.png')
-    wearon_1.rect = wearon_1.rect.move(-20, 140)
-    wearon_1.key = 'wearon'
-    TRAINING_SPRITES.add(wearon_1)
-    wearon_2 = Key('training/second_weapon_1.png')
-    wearon_2.rect = wearon_2.rect.move(100, 140)
-    wearon_2.key = 'wearon2'
-    TRAINING_SPRITES.add(wearon_2)    
-    wearon_3 = Key('training/third_weapon_1.png')
-    wearon_3.rect = wearon_3.rect.move(220, 140)
-    wearon_3.key = 'wearon3'
-    TRAINING_SPRITES.add(wearon_3)        
-    key_move_left = Key('training/left_1.png')
-    key_move_left.rect = key_move_left.rect.move(380, 140)
-    key_move_left.key = 'left'
-    TRAINING_SPRITES.add(key_move_left)   
-    key_move_up = Key('training/up_1.png')
-    key_move_up.rect = key_move_up.rect.move(500, 140)
-    key_move_up.key = 'up'
-    TRAINING_SPRITES.add(key_move_up)        
-    key_move_r = Key('training/right_1.png')
-    key_move_r.rect = key_move_r.rect.move(620, 140)
-    key_move_r.key = 'right'
-    TRAINING_SPRITES.add(key_move_r)    
-    key_space = Key('training/space_1.png')
-    key_space.rect = key_space.rect.move(790, 120)
-    key_space.key = 'space'
-    TRAINING_SPRITES.add(key_space)
-    key_word_wearon_1 = Text('training/words/weapon_1.png')
-    key_word_wearon_1.rect = key_word_wearon_1.rect.move(30, 150)
-    key_word_wearon_1.key = 'wearon'
-    TRAINING_SPRITES.add(key_word_wearon_1)
-    key_word_wearon_2 = Text('training/words/weapon_2.png')
-    key_word_wearon_2.rect = key_word_wearon_2.rect.move(145, 150)
-    key_word_wearon_2.key = 'wearon2'
-    TRAINING_SPRITES.add(key_word_wearon_2)    
-    key_word_wearon_3 = Text('training/words/weapon_3.png')
-    key_word_wearon_3.rect = key_word_wearon_3.rect.move(260, 150)
-    key_word_wearon_3.key = 'wearon3'
-    TRAINING_SPRITES.add(key_word_wearon_3)        
-    key_word_left = Text('training/words/left_word.png')
-    key_word_left.rect = key_word_left.rect.move(435, 160)
-    key_word_left.key = 'left'
-    TRAINING_SPRITES.add(key_word_left)            
-    key_word_jump = Text('training/words/jump_word.png')
-    key_word_jump.rect = key_word_jump.rect.move(555, 160)
-    key_word_jump.key = 'up'
-    TRAINING_SPRITES.add(key_word_jump)                  
-    key_word_right = Text('training/words/right_word.png')
-    key_word_right.rect = key_word_right.rect.move(670, 160)
-    key_word_right.key = 'right'
-    TRAINING_SPRITES.add(key_word_right)              
-    key_word_shoot_punch = Text('training/words/shoot_punch.png')
-    key_word_shoot_punch.rect = key_word_shoot_punch.rect.move(840, 150)
-    key_word_shoot_punch.key = 'space'
-    TRAINING_SPRITES.add(key_word_shoot_punch)             
-    loader = Loader()
-    # start_screen()
-    sound = choice(SOUNDS['gameplay'])
-    sound.set_volume(1)
-    sound_channel = sound.play(loops=-1)
-    clock = pygame.time.Clock()
-    load_screen = LoadScreen()
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    load_screen.update()
-    # clock.tick(FPS)
-    pygame.display.flip()
-    potolok = GameObject('locations/start_location/pol.png')
-    tmp_image = pygame.Surface((2247, 400))
-    tmp_image.blit(potolok.image, (0, 0))
-    potolok.image = tmp_image
-    potolok.image = pygame.transform.scale(potolok.image, (
-        potolok.image.get_width() // 2 + 2500, potolok.image.get_height() // 2))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    load_screen.update()
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    potolok.rect = potolok.image.get_rect()
-    potolok.rect = potolok.rect.move(0, -100)
-    potolok.mask = pygame.mask.from_surface(potolok.image)
-    BLOCK_SPRITES.add(potolok)
-    pol = GameObject('locations/start_location/pol.png')
-    tmp_image = pygame.Surface((24000, 300))
-    tmp_image.set_alpha(0)
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    pol.image = tmp_image
-    pol.image = pygame.transform.scale(pol.image, (
-        pol.image.get_width() // 2, pol.image.get_height() // 2))
-    pol.rect = pol.image.get_rect()
-    pol.rect = pol.rect.move(-8000, 433)
-    pol.mask = pygame.mask.from_surface(pol.image)
-    pol.image.fill((255, 0, 0))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    BLOCK_SPRITES.add(pol)
-    wall1 = GameObject('locations/start_location/pol.png')
-    tmp_image = pygame.Surface((40, 2000))
-    # tmp_image.set_alpha(0)
-    wall1.image = tmp_image
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    wall1.image = pygame.transform.scale(wall1.image, (
-        wall1.image.get_width() // 2, wall1.image.get_height() // 2))
-    wall1.rect = wall1.image.get_rect()
-    wall1.rect = wall1.rect.move(-20, 0)
-    wall3 = GameObject('locations/start_location/pol.png')
-    tmp_image = pygame.Surface((100, 300))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    wall3.image = tmp_image
-    # tmp_image.set_alpha(0)
-    wall3.image.fill((255, 0, 0))
-    wall3.rect = wall3.image.get_rect()
-    wall3.rect = wall3.rect.move(6300, 360)
-    wall3.mask = pygame.mask.from_surface(wall3.image)
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    WALL_SPRITES.add(wall1)
-    WALL_SPRITES.add(wall3)
-    wall2 = GameObject('locations/start_location/pol.png')
-    tmp_image = pygame.Surface((75, 2000))
-    # tmp_image.set_alpha(0)
-    wall2.image = tmp_image
-    tmp_image.set_alpha(0)
-    wall2.image.fill((255, 0, 0))
-    wall2.rect = wall2.image.get_rect()
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    wall2.rect = wall2.rect.move(8160, 0)
-    WALL_SPRITES.add(wall2)
-    # ALL_SPRITES.add(door1)
-    pygame.init()
-    running = True
-    door1 = Door('locations/start_location/door_1/door_animation/0.png')
-    door1.image = pygame.transform.scale(door1.image, 
-                                         (door1.image.get_width() // 2, 
-                                          door1.image.get_height() // 2))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    door1.rect = door1.image.get_rect()
-    door1.rect = door1.rect.move(954, 168)           
-    boina_fon = GameObject('locations/boina/3-fon.png')
-    boina_fon.image = pygame.transform.scale(boina_fon.image, 
-                                        (boina_fon.image.get_width() // 3, 
-                                        boina_fon.image.get_height() // 3))
-    boina_fon.rect = boina_fon.image.get_rect()
-    boina_fon.rect = boina_fon.rect.move(6390, -16)        
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    descent = GameObject('locations/boina/2-.png')
-    descent.image = pygame.transform.scale(descent.image, 
-                                        (descent.image.get_width() // 3, 
-                                        descent.image.get_height() // 3))
-    descent.rect = descent.image.get_rect()
-    descent.rect = descent.rect.move(6390, -16)            
-    boina_fon2 = GameObject('locations/boina/1-fon.png')
-    boina_fon2.image = pygame.transform.scale(boina_fon2.image, 
-                                        (boina_fon2.image.get_width() // 3, 
-                                        boina_fon2.image.get_height() // 3))  
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    boina_fon2.rect = boina_fon2.image.get_rect()
-    boina_fon2.rect = boina_fon2.rect.move(6390, -16)          
-    room_fon = GameObject('locations/komnata/3-fon.png')
-    room_fon.image = pygame.transform.scale(room_fon.image, 
-                                        (room_fon.image.get_width() // 2, 
-                                        room_fon.image.get_height() // 2))  
-    room_fon.rect = room_fon.image.get_rect()
-    room_fon.rect = room_fon.rect.move(5254, -156)    
-    room_fon2 = GameObject('locations/komnata/1-fon.png')
-    room_fon2.image = pygame.transform.scale(room_fon2.image, 
-                                        (room_fon2.image.get_width() // 2, 
-                                        room_fon2.image.get_height() // 2))  
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    room_fon2.rect = room_fon2.image.get_rect()
-    room_fon2.rect = room_fon2.rect.move(5254, -156)        
-    room_pol = GameObject('locations/komnata/pol.png')
-    room_pol.image = pygame.transform.scale(room_pol.image, 
-                                        (room_pol.image.get_width() // 2 + 80, 
-                                        room_pol.image.get_height() // 2))  
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    room_pol.rect = room_pol.image.get_rect()
-    room_pol.mask = pygame.mask.from_surface(room_pol.image)
-    room_pol.rect = room_pol.rect.move(5254, 334)
-    BLOCK_SPRITES.add(room_pol)
-    room_ceiling = GameObject('locations/komnata/ceiling.png')
-    room_ceiling.image = pygame.transform.scale(room_ceiling.image, 
-                                        (room_ceiling.image.get_width() // 2 + 70, 
-                                        room_ceiling.image.get_height() // 2))  
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    room_ceiling.rect = room_ceiling.image.get_rect()
-    room_ceiling.rect = room_ceiling.rect.move(5264, -80)          
-    door2 = PerehodDoor('locations/perehod/door_image.png')
-    door2.image = pygame.transform.scale(door2.image, 
-                                         (door2.image.get_width() // 2, 
-                                          door2.image.get_height() // 2))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    door2.standart_image = door2.image
-    door2.rect = door2.image.get_rect()
-    door2.rect = door2.rect.move(5220, 6)        
-    perehod_2_pol_2 = GameObject('locations/perehod/2-po1_cut.png')
-    perehod_2_pol_2.image = pygame.transform.scale(perehod_2_pol_2.image, 
-                                        (perehod_2_pol_2.image.get_width() // 2, 
-                                        perehod_2_pol_2.image.get_height() // 2))  
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    perehod_2_pol_2.rect = perehod_2_pol_2.image.get_rect()
-    BLOCK_SPRITES.add(perehod_2_pol_2)
-    # ALL_SPRITES.add(platform)
-    SCREEN.fill((0, 0, 0))
-    player = Player()
-    player_hand = Hand()
-    player_dead = PlayerDead()
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    PLAYER_GROUP.add(player)
-    PLAYER_GROUP.add(player_hand)
-    ALL_SPRITES.add(player)
-    ALL_SPRITES.add(pol)    
-    moving_player = False
-    way = ''
-    pygame.key.set_repeat(10, 10)
-    count_jumps = 0
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    jumping_way = ''
-    count_updates_of_hand = 0
-    hand_reway = False
-    time_shooting = 0
-    pistol_patron = load_image('pistol_patron.png')
-    pistol_patron = pygame.transform.scale(pistol_patron, 
-                                           (pistol_patron.get_width() // 18, 
-                                          pistol_patron.get_height() // 18))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    pistol_patron_x = player.rect.x
-    pistol_patron_y = player.rect.y + 57
-    pistol_patron_v = 20
-    pistol_shooting = False
-    global_shooting_time = 0
-    player_pushing = False
-    level_fon = pygame.Surface((8482, HEIGHT))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    start_room = load_image('locations/start_location/fon.png')
-    start_room = pygame.transform.scale(start_room, 
-                                        (start_room.get_width() // 2, 
-                                         start_room.get_height() // 2))
-    place_for_costume_fon = load_image('locations/place_for_costume/3-fon.png')
-    place_for_costume_fon = pygame.transform.scale(place_for_costume_fon, 
-                                        (place_for_costume_fon.get_width() // 2, 
-                                         place_for_costume_fon.get_height() // 2
-                                          + 100))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    start_room_fon_pol = load_image('locations/start_location/pol.png')
-    start_room_fon_pol = pygame.transform.scale(start_room_fon_pol, 
-                                        (start_room_fon_pol.get_width() // 2, 
-                                         start_room_fon_pol.get_height() // 2))  
-    start_room_fon_pol_mask = pygame.mask.from_surface(start_room_fon_pol)
-    # ALL_SPRITES.add(demonical)
-    # ALL_SPRITES.add(imp)
-    stolb = GameObject('locations/start_location/stolb.png')
-    stolb.image = pygame.transform.scale(stolb.image, 
-                                         (stolb.image.get_width() // 2, 
-                                           stolb.image.get_height() // 2))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    stolb.rect = stolb.rect.move(210, 0)
-    stolb.mask = pygame.mask.from_surface(stolb.image)
-    place_for_costume_pol = load_image('locations/place_for_costume/2-pol.png')
-    place_for_costume_pol = pygame.transform.scale(place_for_costume_pol, 
-                                        (place_for_costume_pol.get_width() // 2, 
-                                         place_for_costume_pol.get_height() // 2
-                                         ))
-    light_in_place_for_costume = load_image(
-        'locations/place_for_costume/1-light.png')
-    light_in_place_for_costume = pygame.transform.scale(
-        light_in_place_for_costume, (light_in_place_for_costume.get_width() // 2, 
-                                light_in_place_for_costume.get_height() // 2
-                                    ))
-    surf = pygame.Surface((place_for_costume_pol.get_width(), 
-                           place_for_costume_pol.get_height() - 100))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    surf.blit(place_for_costume_pol, (0, -100))
-    place_for_costume_pol = surf
-    sarc_image = load_image('locations/start_location/sarkofag.png')
-    sarc_image = pygame.transform.scale(sarc_image, 
-                                        (sarc_image.get_width() // 2, 
-                                        sarc_image.get_height() // 2 + 40))
-    perehod_1_fon = load_image('locations/perehod/3-fon.png')
-    perehod_1_fon = pygame.transform.scale(perehod_1_fon, 
-                                        (perehod_1_fon.get_width() // 2, 
-                                        perehod_1_fon.get_height() // 2 + 380))
-    perehod_1_pol = load_image('locations/perehod/2-pol.png')
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    perehod_1_pol = pygame.transform.scale(perehod_1_pol, 
-                                        (perehod_1_pol.get_width() // 2, 
-                                        perehod_1_pol.get_height() // 2 + 100))
-    surf = pygame.Surface((perehod_1_pol.get_width() - 1753, 
-                           perehod_1_pol.get_height() - 640))
-    surf.blit(perehod_1_pol, (-165, -595))
-    perehod_1_pol = surf
-    perehod_1_pol = pygame.transform.scale(perehod_1_pol, 
-                                        (perehod_1_pol.get_width(), 
-                                        perehod_1_pol.get_height() + 15))
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    perehod_2_pol = GameObject('locations/perehod/2-pol-3.png')
-    perehod_2_pol.image = pygame.transform.scale(perehod_2_pol.image, 
-                                        (perehod_2_pol.image.get_width() // 2, 
-                                        perehod_2_pol.image.get_height() // 2 + 60))    
-    sarc_rect = sarc_image.get_rect()
-    sarc_rect = sarc_rect.move(0, -120)
-    # print(sarc_rect)
-    level_fon.blit(start_room, (0, -100))
-    level_fon.blit(start_room_fon_pol, (0, -100))
-    level_fon.blit(sarc_image, sarc_rect)
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    level_fon.blit(place_for_costume_pol, (1220, 168))
-    level_fon.blit(place_for_costume_fon, (1220, -10))
-    level_fon.blit(light_in_place_for_costume, (1220, 60))
-    level_fon.blit(perehod_1_fon, (1870, -320))
-    level_fon.blit(perehod_1_pol, (2040, 439))
-    perehod_2_pol.mask = pygame.mask.from_surface(perehod_2_pol.image)
-    perehod_2_pol.rect = perehod_2_pol.rect.move(3890, 265)
-    perehod_2_pol_2.rect = perehod_2_pol_2.rect.move(4285, 335)
-    time = 0
-    pressing_K_L = False
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    pressing_K_R = False
-    pressing_K_e = False
-    debug_n = 0
-    # k = 3800
-    # door1.rect = door1.rect.move(-k, 0)
-    stolb.rect = stolb.rect.move(800, 0)
-    player_path = 0
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    load_screen.update()
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    camera = Camera()
-    w = 22
-    h = 30
-    x = 3895
-    y = 434
-    ladders = pygame.sprite.Group()
-    interface_window = InterfaceWindow()
-    hp = Hp()
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    armor = Armor()
-    wearon_logo = WearonLogo()
-    ammo = Ammo()
-    room_1_enemys = Room([Imp(), GameOpponent()]) #GameOpponent(), 
-    room_2_enemys = Room2([]) #Imp(), GameOpponent(), Imp(), Imp()
-    main_enemy = Imp()
-    room_3_enemys = Room3([main_enemy])
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip() 
-    ALL_SPRITES.add(interface_window)
-    ALL_SPRITES.add(hp)
-    ALL_SPRITES.add(armor)
-    ALL_SPRITES.add(wearon_logo)
-    ALL_SPRITES.add(ammo)
-    INTERFACE_GROUP.add(interface_window)
-    INTERFACE_GROUP.add(hp)
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()    
-    INTERFACE_GROUP.add(armor)
-    INTERFACE_GROUP.add(wearon_logo)
-    INTERFACE_GROUP.add(ammo)
-    for i in range(18):
-        block = pygame.sprite.Sprite()
-        block.rect = pygame.Rect(x, y, w, h)
-        block.image = pygame.Surface((block.rect.width, block.rect.height))
-        block.image.fill((255, 0, 0))
-        block.image.set_alpha(0)
-        ALL_SPRITES.add(block)
-        ladders.add(block)
-        BLOCK_SPRITES.add(block)
-        x += w
-        y -= 6
-    SCREEN.fill((0, 0, 0))
-    SCREEN.blit(load_screen.image, load_screen.rect)
-    load_screen.update()
-    SCREEN.blit(loader.image, loader.rect)
-    loader.update()    
-    # clock.tick(FPS)
-    pygame.display.flip()
-    pauseform = PauseForm()
-    load_game()
-    if sound == SOUNDS['gameplay'][1]:
-        sound.set_volume(0.05)
-    else:
-        sound.set_volume(0.4)    
-    while running:
-        TRAINING_SPRITES.update('visible')        
-        sound_channel.queue(choice(SOUNDS['gameplay']))
-        # print(demonical.print_info())
-        pauseform.pressing_Esc = False
-        for elem in ALL_SPRITES:
-            if pygame.sprite.spritecollideany(elem, ladders):
-                if (type(elem) == Imp or type(elem) == Player 
-                    or type(elem) == GameOpponent):
-                    elem.rect = elem.rect.move(0, -20)
-        # root.bind('up', print('up', end=' '))
-        # root.bind('left', print('left'))
-        # print(keyboard.is_pressed('space'), keyboard.is_pressed('a'),
-        #      keyboard.is_pressed('right'), keyboard.is_pressed('w'))
-        # print(player_hand.shooting_time)
-        # print(key)
-        if keyboard.is_pressed('space'):
-            func_pressed_space()
-        if keyboard.is_pressed('up'):
-            way = 'up'
-            for elem in PLAYER_GROUP:
-                if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
-                    count_jumps = 16
-        '''if keyboard.is_pressed('left'):
-            # print('ok')
-            way = 'left'
-            jumping_way = 'left'
-            pressing_K_L = True'''
-        camera.update(player)
-        player_path += camera.dx
-        if player_path >= 31:
-            player_path -= camera.dx
-            camera.dx = 0        
-        pressing_K_e = False
+    terminate()
+    while True:
+        SCREEN = pygame.display.set_mode((WIDTH, HEIGHT))
+        # game_over()
+        wearon_1 = Key('training/first_weapon_1.png')
+        wearon_1.rect = wearon_1.rect.move(-20, 140)
+        wearon_1.key = 'wearon'
+        TRAINING_SPRITES.add(wearon_1)
+        wearon_2 = Key('training/second_weapon_1.png')
+        wearon_2.rect = wearon_2.rect.move(100, 140)
+        wearon_2.key = 'wearon2'
+        TRAINING_SPRITES.add(wearon_2)    
+        wearon_3 = Key('training/third_weapon_1.png')
+        wearon_3.rect = wearon_3.rect.move(220, 140)
+        wearon_3.key = 'wearon3'
+        TRAINING_SPRITES.add(wearon_3)        
+        key_move_left = Key('training/left_1.png')
+        key_move_left.rect = key_move_left.rect.move(380, 140)
+        key_move_left.key = 'left'
+        TRAINING_SPRITES.add(key_move_left)   
+        key_move_up = Key('training/up_1.png')
+        key_move_up.rect = key_move_up.rect.move(500, 140)
+        key_move_up.key = 'up'
+        TRAINING_SPRITES.add(key_move_up)        
+        key_move_r = Key('training/right_1.png')
+        key_move_r.rect = key_move_r.rect.move(620, 140)
+        key_move_r.key = 'right'
+        TRAINING_SPRITES.add(key_move_r)    
+        key_space = Key('training/space_1.png')
+        key_space.rect = key_space.rect.move(790, 120)
+        key_space.key = 'space'
+        TRAINING_SPRITES.add(key_space)
+        key_word_wearon_1 = Text('training/words/weapon_1.png')
+        key_word_wearon_1.rect = key_word_wearon_1.rect.move(30, 150)
+        key_word_wearon_1.key = 'wearon'
+        TRAINING_SPRITES.add(key_word_wearon_1)
+        key_word_wearon_2 = Text('training/words/weapon_2.png')
+        key_word_wearon_2.rect = key_word_wearon_2.rect.move(145, 150)
+        key_word_wearon_2.key = 'wearon2'
+        TRAINING_SPRITES.add(key_word_wearon_2)    
+        key_word_wearon_3 = Text('training/words/weapon_3.png')
+        key_word_wearon_3.rect = key_word_wearon_3.rect.move(260, 150)
+        key_word_wearon_3.key = 'wearon3'
+        TRAINING_SPRITES.add(key_word_wearon_3)        
+        key_word_left = Text('training/words/left_word.png')
+        key_word_left.rect = key_word_left.rect.move(435, 160)
+        key_word_left.key = 'left'
+        TRAINING_SPRITES.add(key_word_left)            
+        key_word_jump = Text('training/words/jump_word.png')
+        key_word_jump.rect = key_word_jump.rect.move(555, 160)
+        key_word_jump.key = 'up'
+        TRAINING_SPRITES.add(key_word_jump)                  
+        key_word_right = Text('training/words/right_word.png')
+        key_word_right.rect = key_word_right.rect.move(670, 160)
+        key_word_right.key = 'right'
+        TRAINING_SPRITES.add(key_word_right)              
+        key_word_shoot_punch = Text('training/words/shoot_punch.png')
+        key_word_shoot_punch.rect = key_word_shoot_punch.rect.move(840, 150)
+        key_word_shoot_punch.key = 'space'
+        TRAINING_SPRITES.add(key_word_shoot_punch)             
+        loader = Loader()
+        start_screen()
+        sound = choice(SOUNDS['gameplay'])
+        sound.set_volume(1)
+        sound_channel = sound.play(loops=-1)
+        clock = pygame.time.Clock()
+        load_screen = LoadScreen()
         SCREEN.fill((0, 0, 0))
-        SCREEN.blit(level_fon, (player_path, 0))
-        for sprite in ALL_SPRITES:
-            if sprite != pol and sprite != player_hand:
-                camera.apply(sprite)
-        # print(jumping_way)
-        for event in pygame.event.get():
-            keys = pygame.key.get_pressed()
-            if keys[pygame.K_1]:
-                TRAINING_SPRITES.update('wearon')            
-            if keys[pygame.K_2]:
-                TRAINING_SPRITES.update('wearon2')
-            if keys[pygame.K_3]:
-                TRAINING_SPRITES.update('wearon3')
-            if keys[pygame.K_SPACE]:
-                TRAINING_SPRITES.update('space')
-            wearon_logo.receive_wearon(event)
-            if event.type == pygame.QUIT:
-                running = False
-            if keys[pygame.K_UP]:
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        load_screen.update()
+        # clock.tick(FPS)
+        pygame.display.flip()
+        potolok = GameObject('locations/start_location/pol.png')
+        tmp_image = pygame.Surface((2247, 400))
+        tmp_image.blit(potolok.image, (0, 0))
+        potolok.image = tmp_image
+        potolok.image = pygame.transform.scale(potolok.image, (
+            potolok.image.get_width() // 2 + 2500, potolok.image.get_height() // 2))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        load_screen.update()
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        potolok.rect = potolok.image.get_rect()
+        potolok.rect = potolok.rect.move(0, -100)
+        potolok.mask = pygame.mask.from_surface(potolok.image)
+        BLOCK_SPRITES.add(potolok)
+        pol = GameObject('locations/start_location/pol.png')
+        tmp_image = pygame.Surface((24000, 300))
+        tmp_image.set_alpha(0)
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        pol.image = tmp_image
+        pol.image = pygame.transform.scale(pol.image, (
+            pol.image.get_width() // 2, pol.image.get_height() // 2))
+        pol.rect = pol.image.get_rect()
+        pol.rect = pol.rect.move(-8000, 433)
+        pol.mask = pygame.mask.from_surface(pol.image)
+        pol.image.fill((255, 0, 0))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        BLOCK_SPRITES.add(pol)
+        wall1 = GameObject('locations/start_location/pol.png')
+        tmp_image = pygame.Surface((40, 2000))
+        # tmp_image.set_alpha(0)
+        wall1.image = tmp_image
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        wall1.image = pygame.transform.scale(wall1.image, (
+            wall1.image.get_width() // 2, wall1.image.get_height() // 2))
+        wall1.rect = wall1.image.get_rect()
+        wall1.rect = wall1.rect.move(-20, 0)
+        wall3 = GameObject('locations/start_location/pol.png')
+        tmp_image = pygame.Surface((100, 300))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        wall3.image = tmp_image
+        # tmp_image.set_alpha(0)
+        wall3.image.fill((255, 0, 0))
+        wall3.rect = wall3.image.get_rect()
+        wall3.rect = wall3.rect.move(6300, 360)
+        wall3.mask = pygame.mask.from_surface(wall3.image)
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        WALL_SPRITES.add(wall1)
+        WALL_SPRITES.add(wall3)
+        wall2 = GameObject('locations/start_location/pol.png')
+        tmp_image = pygame.Surface((75, 2000))
+        # tmp_image.set_alpha(0)
+        wall2.image = tmp_image
+        tmp_image.set_alpha(0)
+        wall2.image.fill((255, 0, 0))
+        wall2.rect = wall2.image.get_rect()
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        wall2.rect = wall2.rect.move(8160, 0)
+        WALL_SPRITES.add(wall2)
+        # ALL_SPRITES.add(door1)
+        pygame.init()
+        running = True
+        door1 = Door('locations/start_location/door_1/door_animation/0.png')
+        door1.image = pygame.transform.scale(door1.image, 
+                                             (door1.image.get_width() // 2, 
+                                              door1.image.get_height() // 2))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        door1.rect = door1.image.get_rect()
+        door1.rect = door1.rect.move(954, 168)           
+        boina_fon = GameObject('locations/boina/3-fon.png')
+        boina_fon.image = pygame.transform.scale(boina_fon.image, 
+                                            (boina_fon.image.get_width() // 3, 
+                                            boina_fon.image.get_height() // 3))
+        boina_fon.rect = boina_fon.image.get_rect()
+        boina_fon.rect = boina_fon.rect.move(6390, -16)        
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        descent = GameObject('locations/boina/2-.png')
+        descent.image = pygame.transform.scale(descent.image, 
+                                            (descent.image.get_width() // 3, 
+                                            descent.image.get_height() // 3))
+        descent.rect = descent.image.get_rect()
+        descent.rect = descent.rect.move(6390, -16)            
+        boina_fon2 = GameObject('locations/boina/1-fon.png')
+        boina_fon2.image = pygame.transform.scale(boina_fon2.image, 
+                                            (boina_fon2.image.get_width() // 3, 
+                                            boina_fon2.image.get_height() // 3))  
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        boina_fon2.rect = boina_fon2.image.get_rect()
+        boina_fon2.rect = boina_fon2.rect.move(6390, -16)          
+        room_fon = GameObject('locations/komnata/3-fon.png')
+        room_fon.image = pygame.transform.scale(room_fon.image, 
+                                            (room_fon.image.get_width() // 2, 
+                                            room_fon.image.get_height() // 2))  
+        room_fon.rect = room_fon.image.get_rect()
+        room_fon.rect = room_fon.rect.move(5254, -156)    
+        room_fon2 = GameObject('locations/komnata/1-fon.png')
+        room_fon2.image = pygame.transform.scale(room_fon2.image, 
+                                            (room_fon2.image.get_width() // 2, 
+                                            room_fon2.image.get_height() // 2))  
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        room_fon2.rect = room_fon2.image.get_rect()
+        room_fon2.rect = room_fon2.rect.move(5254, -156)        
+        room_pol = GameObject('locations/komnata/pol.png')
+        room_pol.image = pygame.transform.scale(room_pol.image, 
+                                            (room_pol.image.get_width() // 2 + 80, 
+                                            room_pol.image.get_height() // 2))  
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        room_pol.rect = room_pol.image.get_rect()
+        room_pol.mask = pygame.mask.from_surface(room_pol.image)
+        room_pol.rect = room_pol.rect.move(5254, 334)
+        BLOCK_SPRITES.add(room_pol)
+        room_ceiling = GameObject('locations/komnata/ceiling.png')
+        room_ceiling.image = pygame.transform.scale(room_ceiling.image, 
+                                            (room_ceiling.image.get_width() // 2 + 70, 
+                                            room_ceiling.image.get_height() // 2))  
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        room_ceiling.rect = room_ceiling.image.get_rect()
+        room_ceiling.rect = room_ceiling.rect.move(5264, -80)          
+        door2 = PerehodDoor('locations/perehod/door_image.png')
+        door2.image = pygame.transform.scale(door2.image, 
+                                             (door2.image.get_width() // 2, 
+                                              door2.image.get_height() // 2))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        door2.standart_image = door2.image
+        door2.rect = door2.image.get_rect()
+        door2.rect = door2.rect.move(5220, 6)        
+        perehod_2_pol_2 = GameObject('locations/perehod/2-po1_cut.png')
+        perehod_2_pol_2.image = pygame.transform.scale(perehod_2_pol_2.image, 
+                                            (perehod_2_pol_2.image.get_width() // 2, 
+                                            perehod_2_pol_2.image.get_height() // 2))  
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        perehod_2_pol_2.rect = perehod_2_pol_2.image.get_rect()
+        BLOCK_SPRITES.add(perehod_2_pol_2)
+        # ALL_SPRITES.add(platform)
+        SCREEN.fill((0, 0, 0))
+        player = Player()
+        player_hand = Hand()
+        player_dead = PlayerDead()
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        PLAYER_GROUP.add(player)
+        PLAYER_GROUP.add(player_hand)
+        ALL_SPRITES.add(player)
+        ALL_SPRITES.add(pol)    
+        moving_player = False
+        way = ''
+        pygame.key.set_repeat(10, 10)
+        count_jumps = 0
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        jumping_way = ''
+        count_updates_of_hand = 0
+        hand_reway = False
+        time_shooting = 0
+        pistol_patron = load_image('pistol_patron.png')
+        pistol_patron = pygame.transform.scale(pistol_patron, 
+                                               (pistol_patron.get_width() // 18, 
+                                              pistol_patron.get_height() // 18))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        pistol_patron_x = player.rect.x
+        pistol_patron_y = player.rect.y + 57
+        pistol_patron_v = 20
+        pistol_shooting = False
+        global_shooting_time = 0
+        player_pushing = False
+        level_fon = pygame.Surface((8482, HEIGHT))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        start_room = load_image('locations/start_location/fon.png')
+        start_room = pygame.transform.scale(start_room, 
+                                            (start_room.get_width() // 2, 
+                                             start_room.get_height() // 2))
+        place_for_costume_fon = load_image('locations/place_for_costume/3-fon.png')
+        place_for_costume_fon = pygame.transform.scale(place_for_costume_fon, 
+                                            (place_for_costume_fon.get_width() // 2, 
+                                             place_for_costume_fon.get_height() // 2
+                                              + 100))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        start_room_fon_pol = load_image('locations/start_location/pol.png')
+        start_room_fon_pol = pygame.transform.scale(start_room_fon_pol, 
+                                            (start_room_fon_pol.get_width() // 2, 
+                                             start_room_fon_pol.get_height() // 2))  
+        start_room_fon_pol_mask = pygame.mask.from_surface(start_room_fon_pol)
+        # ALL_SPRITES.add(demonical)
+        # ALL_SPRITES.add(imp)
+        stolb = GameObject('locations/start_location/stolb.png')
+        stolb.image = pygame.transform.scale(stolb.image, 
+                                             (stolb.image.get_width() // 2, 
+                                               stolb.image.get_height() // 2))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        stolb.rect = stolb.rect.move(210, 0)
+        stolb.mask = pygame.mask.from_surface(stolb.image)
+        place_for_costume_pol = load_image('locations/place_for_costume/2-pol.png')
+        place_for_costume_pol = pygame.transform.scale(place_for_costume_pol, 
+                                            (place_for_costume_pol.get_width() // 2, 
+                                             place_for_costume_pol.get_height() // 2
+                                             ))
+        light_in_place_for_costume = load_image(
+            'locations/place_for_costume/1-light.png')
+        light_in_place_for_costume = pygame.transform.scale(
+            light_in_place_for_costume, (light_in_place_for_costume.get_width() // 2, 
+                                    light_in_place_for_costume.get_height() // 2
+                                        ))
+        surf = pygame.Surface((place_for_costume_pol.get_width(), 
+                               place_for_costume_pol.get_height() - 100))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        surf.blit(place_for_costume_pol, (0, -100))
+        place_for_costume_pol = surf
+        sarc_image = load_image('locations/start_location/sarkofag.png')
+        sarc_image = pygame.transform.scale(sarc_image, 
+                                            (sarc_image.get_width() // 2, 
+                                            sarc_image.get_height() // 2 + 40))
+        perehod_1_fon = load_image('locations/perehod/3-fon.png')
+        perehod_1_fon = pygame.transform.scale(perehod_1_fon, 
+                                            (perehod_1_fon.get_width() // 2, 
+                                            perehod_1_fon.get_height() // 2 + 380))
+        perehod_1_pol = load_image('locations/perehod/2-pol.png')
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        perehod_1_pol = pygame.transform.scale(perehod_1_pol, 
+                                            (perehod_1_pol.get_width() // 2, 
+                                            perehod_1_pol.get_height() // 2 + 100))
+        surf = pygame.Surface((perehod_1_pol.get_width() - 1753, 
+                               perehod_1_pol.get_height() - 640))
+        surf.blit(perehod_1_pol, (-165, -595))
+        perehod_1_pol = surf
+        perehod_1_pol = pygame.transform.scale(perehod_1_pol, 
+                                            (perehod_1_pol.get_width(), 
+                                            perehod_1_pol.get_height() + 15))
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        perehod_2_pol = GameObject('locations/perehod/2-pol-3.png')
+        perehod_2_pol.image = pygame.transform.scale(perehod_2_pol.image, 
+                                            (perehod_2_pol.image.get_width() // 2, 
+                                            perehod_2_pol.image.get_height() // 2 + 60))    
+        sarc_rect = sarc_image.get_rect()
+        sarc_rect = sarc_rect.move(0, -120)
+        # print(sarc_rect)
+        level_fon.blit(start_room, (0, -100))
+        level_fon.blit(start_room_fon_pol, (0, -100))
+        level_fon.blit(sarc_image, sarc_rect)
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        level_fon.blit(place_for_costume_pol, (1220, 168))
+        level_fon.blit(place_for_costume_fon, (1220, -10))
+        level_fon.blit(light_in_place_for_costume, (1220, 60))
+        level_fon.blit(perehod_1_fon, (1870, -320))
+        level_fon.blit(perehod_1_pol, (2040, 439))
+        perehod_2_pol.mask = pygame.mask.from_surface(perehod_2_pol.image)
+        perehod_2_pol.rect = perehod_2_pol.rect.move(3890, 265)
+        perehod_2_pol_2.rect = perehod_2_pol_2.rect.move(4285, 335)
+        time = 0
+        pressing_K_L = False
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        pressing_K_R = False
+        pressing_K_e = False
+        debug_n = 0
+        # k = 3800
+        # door1.rect = door1.rect.move(-k, 0)
+        stolb.rect = stolb.rect.move(800, 0)
+        player_path = 0
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        load_screen.update()
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        camera = Camera()
+        w = 22
+        h = 30
+        x = 3895
+        y = 434
+        ladders = pygame.sprite.Group()
+        interface_window = InterfaceWindow()
+        hp = Hp()
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        armor = Armor()
+        wearon_logo = WearonLogo()
+        ammo = Ammo()
+        room_1_enemys = Room([Imp(), GameOpponent()]) #GameOpponent(), 
+        room_2_enemys = Room2([]) #Imp(), GameOpponent(), Imp(), Imp()
+        main_enemy = Imp()
+        room_3_enemys = Room3([main_enemy])
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip() 
+        ALL_SPRITES.add(interface_window)
+        ALL_SPRITES.add(hp)
+        ALL_SPRITES.add(armor)
+        ALL_SPRITES.add(wearon_logo)
+        ALL_SPRITES.add(ammo)
+        INTERFACE_GROUP.add(interface_window)
+        INTERFACE_GROUP.add(hp)
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()    
+        INTERFACE_GROUP.add(armor)
+        INTERFACE_GROUP.add(wearon_logo)
+        INTERFACE_GROUP.add(ammo)
+        for i in range(18):
+            block = pygame.sprite.Sprite()
+            block.rect = pygame.Rect(x, y, w, h)
+            block.image = pygame.Surface((block.rect.width, block.rect.height))
+            block.image.fill((255, 0, 0))
+            block.image.set_alpha(0)
+            ALL_SPRITES.add(block)
+            ladders.add(block)
+            BLOCK_SPRITES.add(block)
+            x += w
+            y -= 6
+        SCREEN.fill((0, 0, 0))
+        SCREEN.blit(load_screen.image, load_screen.rect)
+        load_screen.update()
+        SCREEN.blit(loader.image, loader.rect)
+        loader.update()    
+        # clock.tick(FPS)
+        pygame.display.flip()
+        pauseform = PauseForm()
+        load_game()
+        if sound == SOUNDS['gameplay'][1]:
+            sound.set_volume(0.05)
+        else:
+            sound.set_volume(0.4)    
+        while running:
+            TRAINING_SPRITES.update('visible')        
+            sound_channel.queue(choice(SOUNDS['gameplay']))
+            # print(demonical.print_info())
+            pauseform.pressing_Esc = False
+            for elem in ALL_SPRITES:
+                if pygame.sprite.spritecollideany(elem, ladders):
+                    if (type(elem) == Imp or type(elem) == Player 
+                        or type(elem) == GameOpponent):
+                        elem.rect = elem.rect.move(0, -20)
+            # root.bind('up', print('up', end=' '))
+            # root.bind('left', print('left'))
+            # print(keyboard.is_pressed('space'), keyboard.is_pressed('a'),
+            #      keyboard.is_pressed('right'), keyboard.is_pressed('w'))
+            # print(player_hand.shooting_time)
+            # print(key)
+            if keyboard.is_pressed('space'):
+                func_pressed_space()
+            if keyboard.is_pressed('up'):
                 way = 'up'
                 for elem in PLAYER_GROUP:
                     if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
-                        count_jumps = 16   
-                print('up')
-                TRAINING_SPRITES.update('up')
-            if keys[pygame.K_LEFT] and keys[pygame.K_UP]:
-                way = 'up'
-                for elem in PLAYER_GROUP:
-                    if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
-                        count_jumps = 16                
-                jumping_way = 'left'
-                pressing_K_L = True 
-                player.reway = True
-            elif keys[pygame.K_LEFT]:
-                TRAINING_SPRITES.update('left')
+                        count_jumps = 16
+            '''if keyboard.is_pressed('left'):
+                # print('ok')
                 way = 'left'
                 jumping_way = 'left'
-                pressing_K_L = True    
-                player.reway = True
-            elif keys[pygame.K_RIGHT] and keys[pygame.K_UP]:
-                way = 'up'
-                for elem in PLAYER_GROUP:
-                    if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
-                        count_jumps = 16                
-                jumping_way = 'right'             
-                pressing_K_R = True         
-                player.reway = False
-            elif keys[pygame.K_RIGHT]:
-                TRAINING_SPRITES.update('right')
+                pressing_K_L = True'''
+            camera.update(player)
+            player_path += camera.dx
+            if player_path >= 31:
+                player_path -= camera.dx
+                camera.dx = 0        
+            pressing_K_e = False
+            SCREEN.fill((0, 0, 0))
+            SCREEN.blit(level_fon, (player_path, 0))
+            for sprite in ALL_SPRITES:
+                if sprite != pol and sprite != player_hand:
+                    camera.apply(sprite)
+            # print(jumping_way)
+            for event in pygame.event.get():
+                keys = pygame.key.get_pressed()
+                if keys[pygame.K_1]:
+                    TRAINING_SPRITES.update('wearon')            
+                if keys[pygame.K_2]:
+                    TRAINING_SPRITES.update('wearon2')
+                if keys[pygame.K_3]:
+                    TRAINING_SPRITES.update('wearon3')
+                if keys[pygame.K_SPACE]:
+                    TRAINING_SPRITES.update('space')
+                wearon_logo.receive_wearon(event)
+                if event.type == pygame.QUIT:
+                    running = False
+                if keys[pygame.K_UP]:
+                    way = 'up'
+                    for elem in PLAYER_GROUP:
+                        if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
+                            count_jumps = 16   
+                    print('up')
+                    TRAINING_SPRITES.update('up')
+                if keys[pygame.K_LEFT] and keys[pygame.K_UP]:
+                    way = 'up'
+                    for elem in PLAYER_GROUP:
+                        if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
+                            count_jumps = 16                
+                    jumping_way = 'left'
+                    pressing_K_L = True 
+                    player.reway = True
+                elif keys[pygame.K_LEFT]:
+                    TRAINING_SPRITES.update('left')
+                    way = 'left'
+                    jumping_way = 'left'
+                    pressing_K_L = True    
+                    player.reway = True
+                elif keys[pygame.K_RIGHT] and keys[pygame.K_UP]:
+                    way = 'up'
+                    for elem in PLAYER_GROUP:
+                        if pygame.sprite.spritecollideany(elem, BLOCK_SPRITES):
+                            count_jumps = 16                
+                    jumping_way = 'right'             
+                    pressing_K_R = True         
+                    player.reway = False
+                elif keys[pygame.K_RIGHT]:
+                    TRAINING_SPRITES.update('right')
+                    way = 'right'
+                    jumping_way = 'right'
+                    pressing_K_R = True
+                    player.reway = False
+                if event.type == pygame.KEYDOWN:
+                    if event.key == pygame.K_SPACE:
+                        func_pressed_space()                
+                if event.type == pygame.KEYUP:
+                    if event.key == pygame.K_e:
+                        pressing_K_e = True
+                    if event.key == pygame.K_ESCAPE:
+                        sound_channel.pause()
+                        show_pause()
+                        sound_channel.unpause()
+                    if event.key == pygame.K_1 or keys[pygame.K_1]:
+                        PRESSING_K_1 = not PRESSING_K_1
+                        if PRESSING_K_1:
+                            player_hand.animation_do = False
+                            player_hand.animation_downing_hand_do = True
+                        else:
+                            player_hand.animation_downing_hand_do = False
+                            player_hand.animation_do = True
+                            # pass
+                    if event.key == pygame.K_RIGHT:
+                        way = ''
+                        jumping_way = ''                
+                        pressing_K_R = False
+                    if event.key == pygame.K_LEFT:
+                        way = ''
+                        jumping_way = ''
+                        pressing_K_L = False
+                    if event.key != pygame.K_SPACE and event.key != pygame.K_1:
+                        moving_player = False
+                        way = ''
+                        jumping_way = ''
+            if pressing_K_R and way != 'up':
                 way = 'right'
                 jumping_way = 'right'
-                pressing_K_R = True
-                player.reway = False
-            if event.type == pygame.KEYDOWN:
-                if event.key == pygame.K_SPACE:
-                    func_pressed_space()                
-            if event.type == pygame.KEYUP:
-                if event.key == pygame.K_e:
-                    pressing_K_e = True
-                if event.key == pygame.K_ESCAPE:
+            else:
+                if pressing_K_L and way != 'up':
+                    way = 'left'
+                    jumping_way = 'left'
+                elif way != 'up':
+                    way = ''
+            # print(pressing_K_R, pressing_K_L)
+            if PRESSING_K_1:
+                player_hand.update()
+                player.with_pistol = True        
+            if player.with_pistol:
+                player_hand.update()
+            if way == 'up':
+                # print(jumping_way)
+                ALL_SPRITES.update(way, jumping_way)
+            else:
+                ALL_SPRITES.update(way)
+            # print(way)
+            # ALL_SPRITES.update()
+            # print(player_hand in ALL_SPRITES)
+            player_dead.update_place_of_dead()
+            for elem in ALL_SPRITES:
+                if elem not in INTERFACE_GROUP:
+                    SCREEN.blit(elem.image, elem.rect)
+            for elem in ALL_SPRITES:
+                if elem in INTERFACE_GROUP:
+                    SCREEN.blit(elem.image, elem.rect)
+            TRAINING_SPRITES.draw(SCREEN)
+            if player.hp <= 0 and player.armor <= 0:
+                player.must_make_hide_of_dead = True
+                player_hand.must_make_hide_of_dead = True
+                if player_dead.update():
                     sound_channel.pause()
-                    show_pause()
+                    if game_over() == 'ExitOnMainMenu':
+                        ALL_SPRITES = pygame.sprite.Group()
+                        BLOCK_SPRITES = pygame.sprite.Group()
+                        WALL_SPRITES = pygame.sprite.Group()
+                        PLAYER_GROUP = pygame.sprite.Group()
+                        FIRST_LEVEL_GROUP = pygame.sprite.Group()
+                        INTERFACE_GROUP = pygame.sprite.Group()
+                        OPPONENTS = pygame.sprite.Group()
+                        TRAINING_SPRITES = pygame.sprite.Group() 
+                        pygame.mixer.stop()
+                        break
                     sound_channel.unpause()
-                if event.key == pygame.K_1 or keys[pygame.K_1]:
-                    PRESSING_K_1 = not PRESSING_K_1
-                    if PRESSING_K_1:
-                        player_hand.animation_do = False
-                        player_hand.animation_downing_hand_do = True
-                    else:
-                        player_hand.animation_downing_hand_do = False
-                        player_hand.animation_do = True
-                        # pass
-                if event.key == pygame.K_RIGHT:
-                    way = ''
-                    jumping_way = ''                
-                    pressing_K_R = False
-                if event.key == pygame.K_LEFT:
-                    way = ''
-                    jumping_way = ''
-                    pressing_K_L = False
-                if event.key != pygame.K_SPACE and event.key != pygame.K_1:
-                    moving_player = False
-                    way = ''
-                    jumping_way = ''
-        if pressing_K_R and way != 'up':
-            way = 'right'
-            jumping_way = 'right'
-        else:
-            if pressing_K_L and way != 'up':
-                way = 'left'
-                jumping_way = 'left'
-            elif way != 'up':
-                way = ''
-        # print(pressing_K_R, pressing_K_L)
-        if PRESSING_K_1:
-            player_hand.update()
-            player.with_pistol = True        
-        if player.with_pistol:
-            player_hand.update()
-        if way == 'up':
-            # print(jumping_way)
-            ALL_SPRITES.update(way, jumping_way)
-        else:
-            ALL_SPRITES.update(way)
-        # print(way)
-        # ALL_SPRITES.update()
-        # print(player_hand in ALL_SPRITES)
-        player_dead.update_place_of_dead()
-        for elem in ALL_SPRITES:
-            if elem not in INTERFACE_GROUP:
-                SCREEN.blit(elem.image, elem.rect)
-        for elem in ALL_SPRITES:
-            if elem in INTERFACE_GROUP:
-                SCREEN.blit(elem.image, elem.rect)
-        TRAINING_SPRITES.draw(SCREEN)
-        if player.hp <= 0 and player.armor <= 0:
-            player.must_make_hide_of_dead = True
-            player_hand.must_make_hide_of_dead = True
-            if player_dead.update():
-                sound_channel.pause()
-                game_over()
-                sound_channel.unpause()
+                else:
+                    SCREEN.blit(player_dead.image, player_dead.rect)        
+            if (player_hand.shooting_time > 0):
+                if (player.with_pistol and 
+                    player_hand.animation_downing_hand_do 
+                    and player_hand.animation_do and pistol_patron_x <= WIDTH):
+                    pistol_shooting = True
+            if pistol_shooting:
+                for elem in ALL_SPRITES:
+                    if type(elem) == Bullet:
+                        elem.update()
             else:
-                SCREEN.blit(player_dead.image, player_dead.rect)        
-        if (player_hand.shooting_time > 0):
-            if (player.with_pistol and 
-                player_hand.animation_downing_hand_do 
-                and player_hand.animation_do and pistol_patron_x <= WIDTH):
-                pistol_shooting = True
-        if pistol_shooting:
+                pistol_shooting = False
             for elem in ALL_SPRITES:
-                if type(elem) == Bullet:
+                if type(elem) == FireBall:
                     elem.update()
-        else:
-            pistol_shooting = False
-        for elem in ALL_SPRITES:
-            if type(elem) == FireBall:
-                elem.update()
-        # print(pistol_patron_x)
-        tmp = len(player_hand.animate_list_push)
-        if player_hand.animate_list_push_inx == tmp:
-            player_hand.animate_list_push_inx = 0
-        if player.pushing_time <= 0:
-            # print('ok', debug_n)
-            # debug_n += 1            
-            player_pushing = False
-            # player_hand.animate_list_push_inx = 0
-        else:
-            player_hand.update('push_time')
-        # print(player.rect.colliderect(door1.rect))
-        # print(pressing_K_e)
-        if room_1_enemys.all_enemys_dead():
-            if player.rect.colliderect(door1.rect) and pressing_K_e:
-                door1.closed_door = not door1.closed_door            
-            if door1.closed_door:
-                door1.update('close')
+            # print(pistol_patron_x)
+            tmp = len(player_hand.animate_list_push)
+            if player_hand.animate_list_push_inx == tmp:
+                player_hand.animate_list_push_inx = 0
+            if player.pushing_time <= 0:
+                # print('ok', debug_n)
+                # debug_n += 1            
+                player_pushing = False
+                # player_hand.animate_list_push_inx = 0
             else:
-                door1.update('open')
-        if room_2_enemys.all_enemys_dead():
-            if player.rect.colliderect(door2.rect) and pressing_K_e:
-                door2.closed_door = not door2.closed_door            
-            if door2.closed_door:
-                door2.update('close')
-            else:
-                door2.update('open')
-        if room_3_enemys.all_enemys_dead():
-            pygame.quit()
-        # if player.collide
-        # print(player.pushing_time)
-        door1.check_collide(player)
-        door2.check_collide(player)
-        for elem in room_3_enemys.enemys:
-            door1.check_collide(elem)
-            door2.check_collide(elem)    
-        for elem in room_2_enemys.enemys:
-            door1.check_collide(elem)
-            door2.check_collide(elem)
-        for elem in room_1_enemys.enemys:
-            door1.check_collide(elem)
-            door2.check_collide(elem)
-        '''surf = HiddenSprite(100, 150, 1030, 120)
-        SCREEN.blit(surf.image, surf.rect)
-        surf.check_collide(player)
-        surf2 = pygame.Surface((100, 150))
-        surf2.set_alpha(70)
-        SCREEN.blit(surf2, (1030, 430)) '''
-        # surf2.check_collide(player)
-        clock.tick(FPS)            
-        global_shooting_time -= 1    
-        pygame.display.flip()
-        tmp = False
-        if player_hand.animate_list_push_inx == 6:
-            for elem in ALL_SPRITES:
-                if (pygame.sprite.collide_mask(player_hand, elem) 
-                    and (type(elem) == Imp or type(elem) == GameOpponent)):
-                    tmp = True
-                    break
-            if tmp:
-                player_hand.sound = SOUNDS['punch']['hit']
+                player_hand.update('push_time')
+            # print(player.rect.colliderect(door1.rect))
+            # print(pressing_K_e)
+            if room_1_enemys.all_enemys_dead():
+                if player.rect.colliderect(door1.rect) and pressing_K_e:
+                    door1.closed_door = not door1.closed_door            
+                if door1.closed_door:
+                    door1.update('close')
+                else:
+                    door1.update('open')
+            if room_2_enemys.all_enemys_dead():
+                if player.rect.colliderect(door2.rect) and pressing_K_e:
+                    door2.closed_door = not door2.closed_door            
+                if door2.closed_door:
+                    door2.update('close')
+                else:
+                    door2.update('open')
+            if room_3_enemys.all_enemys_dead():
+                pygame.quit()
+            # if player.collide
+            # print(player.pushing_time)
+            door1.check_collide(player)
+            door2.check_collide(player)
+            for elem in room_3_enemys.enemys:
+                door1.check_collide(elem)
+                door2.check_collide(elem)    
+            for elem in room_2_enemys.enemys:
+                door1.check_collide(elem)
+                door2.check_collide(elem)
+            for elem in room_1_enemys.enemys:
+                door1.check_collide(elem)
+                door2.check_collide(elem)
+            '''surf = HiddenSprite(100, 150, 1030, 120)
+            SCREEN.blit(surf.image, surf.rect)
+            surf.check_collide(player)
+            surf2 = pygame.Surface((100, 150))
+            surf2.set_alpha(70)
+            SCREEN.blit(surf2, (1030, 430)) '''
+            # surf2.check_collide(player)
+            clock.tick(FPS)            
+            global_shooting_time -= 1    
+            pygame.display.flip()
+            tmp = False
+            if player_hand.animate_list_push_inx == 6:
+                for elem in ALL_SPRITES:
+                    if (pygame.sprite.collide_mask(player_hand, elem) 
+                        and (type(elem) == Imp or type(elem) == GameOpponent)):
+                        tmp = True
+                        break
+                if tmp:
+                    player_hand.sound = SOUNDS['punch']['hit']
+                    player_hand.sound.set_volume(0.9)
+                    player_hand.sound.play()
+                else:
+                    player_hand.sound = SOUNDS['punch']['miss']
+                    player_hand.sound.set_volume(0.1)
+                    player_hand.sound.play()  
+            print(player_hand.shooting_time)
+            if player_hand.shooting_time == 34:
+                player_hand.sound = choice(SOUNDS['pistol_shot'])
                 player_hand.sound.set_volume(0.9)
-                player_hand.sound.play()
+                player_hand.sound.play() 
+            if not door1.closed_door:
+                if door1.animate_inx == 2:
+                    door1.sound.set_volume(0.4)
+                    door1.sound.play()
             else:
-                player_hand.sound = SOUNDS['punch']['miss']
-                player_hand.sound.set_volume(0.1)
-                player_hand.sound.play()  
-        print(player_hand.shooting_time)
-        if player_hand.shooting_time == 34:
-            player_hand.sound = choice(SOUNDS['pistol_shot'])
-            player_hand.sound.set_volume(0.9)
-            player_hand.sound.play() 
-        if not door1.closed_door:
-            if door1.animate_inx == 2:
-                door1.sound.set_volume(0.4)
-                door1.sound.play()
-        else:
-            if door1.animate_inx == 28:
-                door1.sound.set_volume(0.4)
-                door1.sound.play()            
-        if door2.animate_inx == 52 and player.rect.x < door2.rect.x:
-            door2.sound.set_volume(0.4)
-            door2.sound.play()                   
-        if door2.animate_inx == 2 and player.rect.x > door2.rect.x:
-            door2.sound.set_volume(0.4)
-            door2.sound.play()
-        for elem in ALL_SPRITES:
-            if (room_ceiling.rect.colliderect(elem.rect) 
-                and (type(elem) == Player or type(elem) == Imp)):
-                elem.rect = elem.rect.move(0, 30)
-        for elem in WALL_SPRITES:
-            elem.check_collide(player)
-        for elem in ALL_SPRITES:
-            if (elem.rect.colliderect(wall3.rect)
-                and (type(elem) == Imp or type(elem) == GameOpponent)):
-                    if elem.reway:
-                        elem.rect = elem.rect.move(9, 0)
-                    else:
-                        elem.rect = elem.rect.move(-9, 0)
-        print('way:', way)
-        if (not any([elem.image.get_alpha() for elem in TRAINING_SPRITES]) 
-            and not room_1_enemys.activated):
-            room_1_enemys.active()
-            room_2_enemys.active()
-            room_3_enemys.active()        
+                if door1.animate_inx == 28:
+                    door1.sound.set_volume(0.4)
+                    door1.sound.play()            
+            if door2.animate_inx == 52 and player.rect.x < door2.rect.x:
+                door2.sound.set_volume(0.4)
+                door2.sound.play()                   
+            if door2.animate_inx == 2 and player.rect.x > door2.rect.x:
+                door2.sound.set_volume(0.4)
+                door2.sound.play()
+            for elem in ALL_SPRITES:
+                if (room_ceiling.rect.colliderect(elem.rect) 
+                    and (type(elem) == Player or type(elem) == Imp)):
+                    elem.rect = elem.rect.move(0, 30)
+            for elem in WALL_SPRITES:
+                elem.check_collide(player)
+            for elem in ALL_SPRITES:
+                if (elem.rect.colliderect(wall3.rect)
+                    and (type(elem) == Imp or type(elem) == GameOpponent)):
+                        if elem.reway:
+                            elem.rect = elem.rect.move(9, 0)
+                        else:
+                            elem.rect = elem.rect.move(-9, 0)
+            print('way:', way)
+            if (not any([elem.image.get_alpha() for elem in TRAINING_SPRITES]) 
+                and not room_1_enemys.activated):
+                room_1_enemys.active()
+                room_2_enemys.active()
+                room_3_enemys.active()        
     pygame.quit()
     pygame.mixer.quit()

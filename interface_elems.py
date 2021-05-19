@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 import os, sys
 import pygame
 import keyboard
@@ -205,15 +206,15 @@ class StartInControlPointButton(NoButton):
                                          self.standart_image.get_height() // 2))     
 
 
-class ExitOnWorkTableButton(NoButton):
+class ExitInMainMenu(NoButton):
     def __init__(self):
         self.hover_image = load_image(
-            'menu/game_over/exit_on_work_table/put.png')
+            'menu/game_over/exit_in_main_menu/put.png')
         self.hover_image = pygame.transform.scale(self.hover_image, 
                                          (self.hover_image.get_width() // 2, 
                                          self.hover_image.get_height() // 2))
         self.standart_image = load_image(
-            'menu/game_over/exit_on_work_table/not_put.png')
+            'menu/game_over/exit_in_main_menu/not_put.png')
         self.standart_image = pygame.transform.scale(self.standart_image, 
                                          (self.standart_image.get_width() // 2, 
                                          self.standart_image.get_height() // 2))
