@@ -163,3 +163,4 @@ class Opponent(pygame.sprite.Sprite):
     
     def print_info(self):
         print(self.animate_list_stand)
+        print('info')
